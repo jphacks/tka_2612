@@ -3,9 +3,11 @@
 import unittest
 
 from fastapi.testclient import TestClient
+from pydantic import TypeAdapter
 
 from app.cocktail_db import COCKTAILS, VECTORS
 from app.main import app
+from app.schemas import Cocktail
 
 
 class TestCocktailData(unittest.TestCase):
@@ -24,13 +26,14 @@ class TestCocktails(unittest.TestCase):
     def test_list(self) -> None:
         res = self.client.get("/cocktails")
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(len(res.json()), len(COCKTAILS))
-        self.assertNotIn("vector", res.json()[0])
+        cocktails = TypeAdapter(list[Cocktail]).validate_json(res.text)
+        self.assertEqual(len(cocktails), len(COCKTAILS))
+        self.assertNotIn('"vector"', res.text)
 
     def test_get(self) -> None:
         res = self.client.get("/cocktails/mojito")
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json()["name"], "モヒート")
+        self.assertEqual(Cocktail.model_validate_json(res.text).name, "モヒート")
 
     def test_get_not_found(self) -> None:
         res = self.client.get("/cocktails/unknown")
