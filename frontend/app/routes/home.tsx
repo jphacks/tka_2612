@@ -1,33 +1,7 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
+import { saveRecommendationSession } from "~/lib/recommendation-session";
 import type { Route } from "./+types/home";
-
-const sampleCocktails = [
-  {
-    name: "カシスオレンジ",
-    englishName: "Cassis Orange",
-    description:
-      "カシスの甘酸っぱさとオレンジの果実感。飲みやすく華やかな一杯。",
-    tags: ["甘口", "フルーティー"],
-    match: 96,
-    color: "cassis",
-  },
-  {
-    name: "ファジーネーブル",
-    englishName: "Fuzzy Navel",
-    description: "ピーチのやさしい甘みとオレンジの爽やかさが広がります。",
-    tags: ["甘口", "ピーチ"],
-    match: 89,
-    color: "peach",
-  },
-  {
-    name: "チャイナブルー",
-    englishName: "China Blue",
-    description: "ライチの香りにグレープフルーツのほろ苦さを添えた味わい。",
-    tags: ["さっぱり", "柑橘"],
-    match: 82,
-    color: "blue",
-  },
-];
 
 export function meta(_: Route.MetaArgs) {
   return [
@@ -41,12 +15,14 @@ export function meta(_: Route.MetaArgs) {
 }
 
 export default function Home() {
+  const navigate = useNavigate();
   const [preference, setPreference] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageError, setImageError] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [showResults, setShowResults] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   useEffect(() => {
     if (!imageFile) {
@@ -68,12 +44,22 @@ export default function Home() {
       return;
     }
     setImageFile(file);
-    setShowResults(false);
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setShowResults(true);
+    setIsSubmitting(true);
+    setSubmitError("");
+    try {
+      await saveRecommendationSession(preference.trim(), imageFile);
+      navigate("/cocktails");
+    } catch {
+      setSubmitError(
+        "検索を開始できませんでした。画像を小さくするか、もう一度お試しください。",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -167,7 +153,6 @@ export default function Home() {
               value={preference}
               onChange={(event) => {
                 setPreference(event.target.value);
-                setShowResults(false);
               }}
               placeholder="例：甘くてフルーティーなものが飲みたい"
               rows={3}
@@ -181,7 +166,6 @@ export default function Home() {
                     key={suggestion}
                     onClick={() => {
                       setPreference(suggestion);
-                      setShowResults(false);
                     }}
                     type="button"
                   >
@@ -226,7 +210,6 @@ export default function Home() {
                   className="remove-image"
                   onClick={() => {
                     setImageFile(null);
-                    setShowResults(false);
                   }}
                   type="button"
                   aria-label="選択した写真を削除"
@@ -272,68 +255,26 @@ export default function Home() {
             </p>
           </div>
 
-          <button className="submit-button" type="submit">
-            <span>おすすめを見つける</span>
+          <button
+            className="submit-button"
+            disabled={isSubmitting}
+            type="submit"
+          >
+            <span>
+              {isSubmitting ? "準備しています…" : "おすすめを見つける"}
+            </span>
             <span className="submit-arrow" aria-hidden="true">
               →
             </span>
           </button>
-          <p className="demo-note">
-            現在は画面確認用のサンプル結果を表示します
-          </p>
+          <p className="demo-note">写真がなくてもカタログ全体から探せます</p>
+          {submitError && (
+            <p className="field-error request-error" role="alert">
+              {submitError}
+            </p>
+          )}
         </form>
       </section>
-
-      {showResults && (
-        <section
-          className="results-section"
-          aria-live="polite"
-          aria-labelledby="results-title"
-        >
-          <div className="results-heading">
-            <div>
-              <p className="eyebrow section-eyebrow">MADE FOR YOUR MOOD</p>
-              <h2 id="results-title">今夜のおすすめ</h2>
-              <p className="results-description">
-                「{preference.trim()}」に合わせたサンプルです。
-              </p>
-            </div>
-            <span className="mock-label">SAMPLE</span>
-          </div>
-          <div className="cocktail-list">
-            {sampleCocktails.map((cocktail, index) => (
-              <article className="cocktail-card" key={cocktail.name}>
-                <div
-                  className={`cocktail-art cocktail-art-${cocktail.color}`}
-                  aria-hidden="true"
-                >
-                  <span className="cocktail-number">0{index + 1}</span>
-                  <span className="mini-glass">
-                    <span className="mini-drink" />
-                  </span>
-                </div>
-                <div className="cocktail-info">
-                  <p className="cocktail-english">{cocktail.englishName}</p>
-                  <h3>{cocktail.name}</h3>
-                  <p className="cocktail-description">{cocktail.description}</p>
-                  <div className="cocktail-tags">
-                    {cocktail.tags.map((tag) => (
-                      <span key={tag}>{tag}</span>
-                    ))}
-                  </div>
-                </div>
-                <div className="match-score">
-                  <strong>
-                    {cocktail.match}
-                    <small>%</small>
-                  </strong>
-                  <span>相性</span>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
 
       <section className="how-section" id="how-it-works">
         <p className="eyebrow section-eyebrow">SIMPLE AS A SIP</p>
