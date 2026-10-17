@@ -1,8 +1,14 @@
 from fastapi import APIRouter, HTTPException
 
 from app import similarity
-from app.cocktail_db import COCKTAILS, COCKTAILS_BY_ID
-from app.schemas import Cocktail, SearchRequest, SearchResponse, SimilarCocktail
+from app.cocktail_db import COCKTAILS, COCKTAILS_BY_ID, VECTORS
+from app.schemas import (
+    Cocktail,
+    CocktailVector,
+    SearchRequest,
+    SearchResponse,
+    SimilarCocktail,
+)
 
 router = APIRouter(prefix="/cocktails", tags=["cocktails"])
 
@@ -13,6 +19,17 @@ SEARCH_LIMIT = 100
 def list_cocktails() -> list[Cocktail]:
     """登録されているお酒の一覧"""
     return COCKTAILS
+
+
+# /{cocktail_id} より前に定義しないと、"vectors" がお酒のIDとして扱われる
+@router.get("/vectors")
+def list_cocktail_vectors() -> list[CocktailVector]:
+    """登録されているお酒のベクトルの一覧（フロントエンドで次元削減して表示する用）"""
+    return [
+        CocktailVector(id=c.id, vector=VECTORS[c.id])
+        for c in COCKTAILS
+        if c.id in VECTORS
+    ]
 
 
 @router.get("/{cocktail_id}", responses={404: {"description": "お酒が見つからない"}})
