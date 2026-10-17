@@ -15,10 +15,12 @@
 
 ## チェック
 
-- コードを変更したら、`backend/` で `make check`（ruff・ty）を実行し、すべて通してから作業完了とする
-- コミット時も pre-commit フック（`.githooks/pre-commit`）で `make check` が走る。失敗したら直してからコミットする
+- コードを変更したら、変更したディレクトリで `make check` を実行し、すべて通してから作業完了とする
+  - `backend/`: ruff（リント・フォーマット）と ty（型）
+  - `frontend/`: Biome（リント・フォーマット）と tsc（型）
+- コミット時も pre-commit フック（`.githooks/pre-commit`）で両方の `make check` が走る。失敗したら直してからコミットする
 - `git commit --no-verify` でフックを飛ばさない
-- `# noqa` / `# type: ignore` の追加や、ルールを緩める設定変更でエラーを黙らせない。必要な場合は理由を添えてユーザに確認する
+- `# noqa` / `# type: ignore` / `biome-ignore` の追加や、ルールを緩める設定変更でエラーを黙らせない。必要な場合は理由を添えてユーザに確認する
 
 ## 依存ライブラリ
 
