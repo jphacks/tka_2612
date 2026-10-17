@@ -23,8 +23,7 @@
       "extensions": [
         "ms-python.python",
         "charliermarsh.ruff",
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode",
+        "biomejs.biome",
         "anthropic.claude-code"
       ]
     }
