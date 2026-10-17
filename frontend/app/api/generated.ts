@@ -25,6 +25,16 @@ export interface Cocktail {
 }
 
 /**
+ * お酒の説明文の埋め込みベクトル
+ */
+export interface CocktailVector {
+  /** お酒のID */
+  id: string;
+  /** 説明文の埋め込みベクトル（gemini-embedding-2、768次元） */
+  vector: number[];
+}
+
+/**
  * お酒ごとのお気に入りの総数
  */
 export interface FavoriteCount {
@@ -245,6 +255,46 @@ export const listCocktails = async (
     status: res.status,
     headers: res.headers,
   } as listCocktailsResponse;
+};
+
+export type listCocktailVectorsResponse200 = {
+  data: CocktailVector[];
+  status: 200;
+};
+
+export type listCocktailVectorsResponseSuccess =
+  listCocktailVectorsResponse200 & {
+    headers: Headers;
+  };
+
+export type listCocktailVectorsResponse = listCocktailVectorsResponseSuccess;
+
+export const getListCocktailVectorsUrl = () => {
+  return `${API_BASE_URL}/cocktails/vectors`;
+};
+
+/**
+ * 登録されているお酒のベクトルの一覧（フロントエンドで次元削減して表示する用）
+ * @summary List Cocktail Vectors
+ */
+export const listCocktailVectors = async (
+  options?: RequestInit,
+): Promise<listCocktailVectorsResponse> => {
+  const res = await fetch(getListCocktailVectorsUrl(), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listCocktailVectorsResponse["data"] = body
+    ? JSON.parse(body)
+    : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as listCocktailVectorsResponse;
 };
 
 export type getCocktailResponse200 = {

@@ -11,4 +11,9 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  optimizeDeps: {
+    // Worker からしか読まない CommonJS のライブラリは起動時に見つからず、
+    // 初回アクセスで変換し直しとリロードが起きるため、最初から変換しておく
+    include: ["umap-js"],
+  },
 });
