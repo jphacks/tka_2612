@@ -1,20 +1,29 @@
-"""お酒の元データにベクトルを付けて data/cocktails.json に書き出す
+"""カクテルとベースの元データにベクトルを付けて書き出す
 
-元データ（data/cocktails_source.json）を変えたら実行し直して、一緒にコミットする。
-GEMINI_API_KEY が必要（backend/.env に書く）。
+- data/cocktails_source.json → data/cocktails.json
+- data/bases_source.json → data/bases.json
 
-名前と説明文が前回と同じお酒は、前回のベクトルを使い回し、Gemini には送らない。
-モデルや次元を変えたときは、data/cocktails.json を消してから実行して全件作り直す。
+元データを変えたら実行し直して、一緒にコミットする。GEMINI_API_KEY が必要（backend/.env に書く）。
+名前と説明文が前回と同じものは、前回のベクトルを使い回し、Gemini には送らない。
+モデルや次元を変えたときは、ベクトル付きのファイルを消してから実行して全件作り直す。
 """
 
 import time
+from pathlib import Path
+
+from pydantic import BaseModel, TypeAdapter
 
 from app import embedding, gemini
-from app.cocktail_db import (
+from app.data_files import (
+    BASE_RECORDS,
+    BASES_EMBEDDED_PATH,
+    BASES_SOURCE_PATH,
     EMBEDDED_PATH,
     RECORDS,
     SOURCE_PATH,
+    BaseRecord,
     CocktailRecord,
+    read_base_records,
     read_records,
 )
 
@@ -24,24 +33,35 @@ BATCH_SIZE = 20
 WAIT_SECONDS = 60 * BATCH_SIZE / embedding.REQUESTS_PER_MINUTE + 1
 
 
-def _previous_vectors() -> dict[tuple[str, str], list[float]]:
-    """前回のベクトルを (名前, 説明文) ごとに引けるようにする"""
-    if not EMBEDDED_PATH.exists():
-        return {}
-    return {
-        (r.name, r.description): r.vector
-        for r in read_records(EMBEDDED_PATH)
-        if r.vector is not None
+class _Previous(BaseModel):
+    """前回のファイルのうち、ベクトルの使い回しに必要な項目だけ（ほかの項目は読み飛ばす）"""
+
+    name: str
+    description: str
+    vector: list[float] | None = None
+
+
+_PREVIOUS = TypeAdapter(list[_Previous])
+
+
+def read_previous(path: Path) -> list[_Previous]:
+    """前回のベクトル付きファイルを読む。なければ空"""
+    return _PREVIOUS.validate_json(path.read_bytes()) if path.exists() else []
+
+
+def fill_vectors[R: (CocktailRecord, BaseRecord)](
+    label: str, records: list[R], previous: list[_Previous]
+) -> None:
+    """前回と名前・説明文が同じものは前回のベクトルを使い、残りを Gemini でベクトル化する"""
+    reuse = {
+        (r.name, r.description): r.vector for r in previous if r.vector is not None
     }
-
-
-def main() -> None:
-    records = read_records(SOURCE_PATH)
-    previous = _previous_vectors()
     for r in records:
-        r.vector = previous.get((r.name, r.description))
-    todo: list[CocktailRecord] = [r for r in records if r.vector is None]
-    print(f"{len(records)} 件中 {len(records) - len(todo)} 件は前回のベクトルを使う")
+        r.vector = reuse.get((r.name, r.description))
+    todo = [r for r in records if r.vector is None]
+    print(
+        f"{label}: {len(records)} 件中 {len(records) - len(todo)} 件は前回のベクトルを使う"
+    )
 
     if todo and not gemini.is_available():
         raise SystemExit("GEMINI_API_KEY が設定されていません（backend/.env を確認）")
@@ -54,14 +74,22 @@ def main() -> None:
         for r, vector in zip(batch, vectors, strict=True):
             # ファイルを小さくするため、小数は6桁に丸める
             r.vector = [round(v, 6) for v in vector]
-        print(f"{start + len(batch)} / {len(todo)} 件をベクトル化")
+        print(f"{label}: {start + len(batch)} / {len(todo)} 件をベクトル化")
         if start + BATCH_SIZE < len(todo):
             time.sleep(WAIT_SECONDS)
 
-    EMBEDDED_PATH.write_bytes(RECORDS.dump_json(records) + b"\n")
-    print(
-        f"{EMBEDDED_PATH} を生成しました（{embedding.MODEL}, {embedding.DIMENSIONS} 次元）"
-    )
+
+def main() -> None:
+    cocktails = read_records(SOURCE_PATH)
+    fill_vectors("カクテル", cocktails, read_previous(EMBEDDED_PATH))
+    EMBEDDED_PATH.write_bytes(RECORDS.dump_json(cocktails) + b"\n")
+
+    bases = read_base_records(BASES_SOURCE_PATH)
+    fill_vectors("ベース", bases, read_previous(BASES_EMBEDDED_PATH))
+    BASES_EMBEDDED_PATH.write_bytes(BASE_RECORDS.dump_json(bases) + b"\n")
+
+    print(f"{EMBEDDED_PATH} と {BASES_EMBEDDED_PATH} を生成しました")
+    print(f"（{embedding.MODEL}, {embedding.DIMENSIONS} 次元）")
 
 
 if __name__ == "__main__":

@@ -5,7 +5,14 @@ import unittest
 from fastapi.testclient import TestClient
 from pydantic import TypeAdapter
 
-from app.cocktail_db import COCKTAILS, VECTORS
+from app.cocktail_db import (
+    BASE_VECTORS,
+    BASES,
+    BASES_BY_ID,
+    COCKTAILS,
+    COCKTAILS_BY_ID,
+    VECTORS,
+)
 from app.main import app
 from app.schemas import Cocktail
 
@@ -17,6 +24,37 @@ class TestCocktailData(unittest.TestCase):
 
     def test_every_cocktail_has_vector(self) -> None:
         self.assertEqual(set(VECTORS), {c.id for c in COCKTAILS})
+
+
+class TestBaseData(unittest.TestCase):
+    def test_bases(self) -> None:
+        self.assertEqual(len(BASES), 13)
+        self.assertIn("gin", BASES_BY_ID)
+        self.assertIn("ウオッカ", BASES_BY_ID["vodka"].aliases)
+
+    def test_every_base_has_vector(self) -> None:
+        self.assertEqual(set(BASE_VECTORS), set(BASES_BY_ID))
+        self.assertTrue(all(len(v) == 768 for v in BASE_VECTORS.values()))
+
+    def test_cocktail_bases_exist(self) -> None:
+        for c in COCKTAILS:
+            with self.subTest(cocktail=c.id):
+                self.assertTrue(set(c.bases) <= set(BASES_BY_ID))
+
+    def test_examples(self) -> None:
+        for cocktail_id, bases in [
+            ("gin-and-tonic", ["gin"]),
+            ("mojito", ["rum"]),
+            ("cassis-and-orange", ["liqueur"]),
+            ("lemon-sour", ["shochu"]),
+            ("long-island-iced-tea", ["tequila", "rum", "gin"]),
+            ("virgin-mary", []),
+        ]:
+            with self.subTest(cocktail=cocktail_id):
+                self.assertEqual(COCKTAILS_BY_ID[cocktail_id].bases, bases)
+
+    def test_only_non_alcoholic_without_base(self) -> None:
+        self.assertEqual(sum(1 for c in COCKTAILS if not c.bases), 18)
 
 
 class TestCocktails(unittest.TestCase):

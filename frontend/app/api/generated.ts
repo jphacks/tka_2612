@@ -20,6 +20,8 @@ export interface Cocktail {
   description: string;
   /** 材料 */
   ingredients: string[];
+  /** ベースのお酒のID（ジン・ラムなど。複数のこともある。ノンアルコールは空） */
+  bases: string[];
 }
 
 /**
