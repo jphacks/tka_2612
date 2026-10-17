@@ -7,11 +7,16 @@ GEMINI_API_KEY が必要（backend/.env に書く）。
 モデルや次元を変えたときは、data/cocktails.json を消してから実行して全件作り直す。
 """
 
-import json
 import time
 
 from app import embedding, gemini
-from app.cocktail_db import EMBEDDED_PATH, SOURCE_PATH
+from app.cocktail_db import (
+    EMBEDDED_PATH,
+    RECORDS,
+    SOURCE_PATH,
+    CocktailRecord,
+    read_records,
+)
 
 # 無料枠の回数制限（1分あたりの件数）を超えないよう、間隔を空けて少しずつ送る。
 # 実行中や直後はサーバー側の入力文のベクトル化も枠を使うので、少し余裕を持たせる
@@ -23,18 +28,20 @@ def _previous_vectors() -> dict[tuple[str, str], list[float]]:
     """前回のベクトルを (名前, 説明文) ごとに引けるようにする"""
     if not EMBEDDED_PATH.exists():
         return {}
-    items = json.loads(EMBEDDED_PATH.read_text(encoding="utf-8"))
-    return {(i["name"], i["description"]): i["vector"] for i in items if "vector" in i}
+    return {
+        (r.name, r.description): r.vector
+        for r in read_records(EMBEDDED_PATH)
+        if r.vector is not None
+    }
 
 
 def main() -> None:
-    items = json.loads(SOURCE_PATH.read_text(encoding="utf-8"))
+    records = read_records(SOURCE_PATH)
     previous = _previous_vectors()
-    for item in items:
-        if vector := previous.get((item["name"], item["description"])):
-            item["vector"] = vector
-    todo = [item for item in items if "vector" not in item]
-    print(f"{len(items)} 件中 {len(items) - len(todo)} 件は前回のベクトルを使う")
+    for r in records:
+        r.vector = previous.get((r.name, r.description))
+    todo: list[CocktailRecord] = [r for r in records if r.vector is None]
+    print(f"{len(records)} 件中 {len(records) - len(todo)} 件は前回のベクトルを使う")
 
     if todo and not gemini.is_available():
         raise SystemExit("GEMINI_API_KEY が設定されていません（backend/.env を確認）")
@@ -42,19 +49,16 @@ def main() -> None:
     for start in range(0, len(todo), BATCH_SIZE):
         batch = todo[start : start + BATCH_SIZE]
         vectors = embedding.embed_documents(
-            [item["name"] for item in batch],
-            [item["description"] for item in batch],
+            [r.name for r in batch], [r.description for r in batch]
         )
-        for item, vector in zip(batch, vectors, strict=True):
+        for r, vector in zip(batch, vectors, strict=True):
             # ファイルを小さくするため、小数は6桁に丸める
-            item["vector"] = [round(v, 6) for v in vector]
+            r.vector = [round(v, 6) for v in vector]
         print(f"{start + len(batch)} / {len(todo)} 件をベクトル化")
         if start + BATCH_SIZE < len(todo):
             time.sleep(WAIT_SECONDS)
 
-    EMBEDDED_PATH.write_text(
-        json.dumps(items, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    EMBEDDED_PATH.write_bytes(RECORDS.dump_json(records) + b"\n")
     print(
         f"{EMBEDDED_PATH} を生成しました（{embedding.MODEL}, {embedding.DIMENSIONS} 次元）"
     )

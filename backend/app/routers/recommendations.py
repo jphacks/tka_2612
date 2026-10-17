@@ -1,5 +1,4 @@
 import logging
-from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
@@ -12,13 +11,14 @@ logger = logging.getLogger(__name__)
 
 TOP_N = 5
 
-ERRORS: dict[int | str, dict[str, Any]] = {
-    422: {"description": "存在しないお酒のIDが含まれている"},
-    503: {"description": "Gemini が使えない（API キー未設定・回数制限など）"},
-}
 
-
-@router.post("", responses=ERRORS)
+@router.post(
+    "",
+    responses={
+        422: {"description": "存在しないお酒のIDが含まれている"},
+        503: {"description": "Gemini が使えない（API キー未設定・回数制限など）"},
+    },
+)
 def recommend(req: RecommendRequest) -> RecommendResponse:
     """入力文（味の希望や気分）に合うお酒を、一致度の高い順に上位5件返す
 
