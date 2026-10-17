@@ -11,6 +11,18 @@ class Cocktail(BaseModel):
     aliases: list[str] = Field(description="照合用の別名（英名・表記ゆれなど）")
     description: str = Field(description="味・香り、度数の目安、合う場面・気分の説明文")
     ingredients: list[str] = Field(description="材料")
+    bases: list[str] = Field(
+        description="ベースのお酒のID（ジン・ラムなど。複数のこともある。ノンアルコールは空）"
+    )
+
+
+class BaseSpirit(BaseModel):
+    """カクテルのベースになるお酒（ジン・ラム・ウォッカなど）"""
+
+    id: str = Field(description="ベースのID（gin、rum など）")
+    name: str = Field(description="ベースの名前（日本語）")
+    aliases: list[str] = Field(description="別名（英名・表記ゆれなど）")
+    description: str = Field(description="味・香り、合う場面の説明文")
 
 
 class CocktailVector(BaseModel):

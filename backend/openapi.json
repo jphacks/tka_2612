@@ -536,6 +536,14 @@
             "type": "array",
             "title": "Ingredients",
             "description": "材料"
+          },
+          "bases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Bases",
+            "description": "ベースのお酒のID（ジン・ラムなど。複数のこともある。ノンアルコールは空）"
           }
         },
         "type": "object",
@@ -544,7 +552,8 @@
           "name",
           "aliases",
           "description",
-          "ingredients"
+          "ingredients",
+          "bases"
         ],
         "title": "Cocktail",
         "description": "お酒の情報（ベクトルは API では返さない）"
