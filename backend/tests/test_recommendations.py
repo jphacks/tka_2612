@@ -10,6 +10,7 @@ from google.genai import errors
 from app import embedding, gemini
 from app.cocktail_db import COCKTAILS, VECTORS
 from app.main import app
+from app.schemas import RecommendRequest, RecommendResponse
 
 # 偽のベクトルの角度の刻み（角度が半周を超えないよう、件数で割る）
 STEP = 1 / len(COCKTAILS)
@@ -36,34 +37,41 @@ class TestRecommendations(unittest.TestCase):
         self.embed_query = patcher.start()
         self.addCleanup(patcher.stop)
 
-    def recommend(self, body: dict) -> dict:
-        res = self.client.post("/recommendations", json=body)
+    def recommend(
+        self, query: str, cocktail_ids: list[str] | None = None
+    ) -> RecommendResponse:
+        req = RecommendRequest(query=query, cocktail_ids=cocktail_ids)
+        res = self.client.post(
+            "/recommendations",
+            content=req.model_dump_json(),
+            headers={"Content-Type": "application/json"},
+        )
         self.assertEqual(res.status_code, 200, res.text)
-        return res.json()
+        return RecommendResponse.model_validate_json(res.text)
 
-    def ids(self, body: dict) -> list[str]:
-        return [r["cocktail"]["id"] for r in body["recommendations"]]
+    def ids(self, body: RecommendResponse) -> list[str]:
+        return [r.cocktail.id for r in body.recommendations]
 
     def test_whole_database(self) -> None:
-        body = self.recommend({"query": "甘くてフルーティ"})
-        self.assertEqual(body["query"], "甘くてフルーティ")
+        body = self.recommend("甘くてフルーティ")
+        self.assertEqual(body.query, "甘くてフルーティ")
         self.assertEqual(self.ids(body), [c.id for c in COCKTAILS[:5]])
-        scores = [r["score"] for r in body["recommendations"]]
+        scores = [r.score for r in body.recommendations]
         self.assertAlmostEqual(scores[0], 1.0)
         self.assertAlmostEqual(scores[1], math.cos(STEP))
 
     def test_only_given_cocktails(self) -> None:
         menu = [COCKTAILS[i].id for i in (30, 10, 20)]
-        body = self.recommend({"query": "甘い", "cocktail_ids": menu})
+        body = self.recommend("甘い", menu)
         self.assertEqual(self.ids(body), [COCKTAILS[i].id for i in (10, 20, 30)])
 
     def test_duplicate_ids_once(self) -> None:
-        body = self.recommend({"query": "甘い", "cocktail_ids": ["mojito", "mojito"]})
+        body = self.recommend("甘い", ["mojito", "mojito"])
         self.assertEqual(self.ids(body), ["mojito"])
 
     def test_empty_ids(self) -> None:
-        body = self.recommend({"query": "甘い", "cocktail_ids": []})
-        self.assertEqual(body["recommendations"], [])
+        body = self.recommend("甘い", [])
+        self.assertEqual(body.recommendations, [])
         self.embed_query.assert_not_called()
 
     def test_unknown_id(self) -> None:
@@ -73,7 +81,7 @@ class TestRecommendations(unittest.TestCase):
         self.assertEqual(res.status_code, 422)
 
     def test_query_is_embedded(self) -> None:
-        self.recommend({"query": "失恋を支えてくれるお酒"})
+        self.recommend("失恋を支えてくれるお酒")
         self.embed_query.assert_called_once_with("失恋を支えてくれるお酒")
 
     def test_query_required(self) -> None:

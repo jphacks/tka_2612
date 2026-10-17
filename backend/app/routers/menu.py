@@ -1,5 +1,4 @@
 import logging
-from typing import Annotated, Any
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
@@ -17,16 +16,20 @@ logger = logging.getLogger(__name__)
 # Gemini に画像をそのまま送れるのは、リクエスト全体で 20MB まで
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 
-SCAN_ERRORS: dict[int | str, dict[str, Any]] = {
-    413: {"description": "画像が大きすぎる（10MB まで）"},
-    415: {"description": "画像ではないファイル"},
-    503: {"description": "Gemini が使えない（API キー未設定・回数制限など）"},
-}
+# 受け取る写真（multipart の image）
+MENU_IMAGE = File(description="メニューの写真（JPEG・PNG など）")
 
 
-@router.post("/scan", responses=SCAN_ERRORS)
+@router.post(
+    "/scan",
+    responses={
+        413: {"description": "画像が大きすぎる（10MB まで）"},
+        415: {"description": "画像ではないファイル"},
+        503: {"description": "Gemini が使えない（API キー未設定・回数制限など）"},
+    },
+)
 def scan_menu(
-    image: Annotated[UploadFile, File(description="メニューの写真（JPEG・PNG など）")],
+    image: UploadFile = MENU_IMAGE,
 ) -> MenuScanResponse:
     """メニューの写真から、載っているお酒の名前を AI（Gemini）で読み取る
 
