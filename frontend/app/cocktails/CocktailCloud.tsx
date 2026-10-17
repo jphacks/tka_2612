@@ -64,7 +64,8 @@ export function CocktailCloud({
   }, [focus]);
 
   return (
-    <div className="absolute inset-0 overflow-hidden">
+    // isolate: 名前タグの z-index をこの中だけで効かせ、上に重ねる UI より手前に出さない
+    <div className="absolute inset-0 isolate overflow-hidden">
       <div ref={containerRef} className="absolute inset-0" />
       <div
         ref={labelLayerRef}
