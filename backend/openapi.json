@@ -12,7 +12,7 @@
         ],
         "summary": "List Cocktails",
         "description": "登録されているお酒の一覧",
-        "operationId": "list_cocktails_cocktails_get",
+        "operationId": "list_cocktails",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -23,7 +23,7 @@
                     "$ref": "#/components/schemas/Cocktail"
                   },
                   "type": "array",
-                  "title": "Response List Cocktails Cocktails Get"
+                  "title": "Response List Cocktails"
                 }
               }
             }
@@ -38,7 +38,7 @@
         ],
         "summary": "Get Cocktail",
         "description": "お酒の詳細",
-        "operationId": "get_cocktail_cocktails__cocktail_id__get",
+        "operationId": "get_cocktail",
         "parameters": [
           {
             "name": "cocktail_id",
@@ -84,12 +84,12 @@
         ],
         "summary": "Recommend",
         "description": "好みに合うお酒を一致度の高い順に上位5件返す（写真の読み取りはまだモック）",
-        "operationId": "recommend_recommendations_post",
+        "operationId": "recommend",
         "requestBody": {
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/Body_recommend_recommendations_post"
+                "$ref": "#/components/schemas/Body_recommend"
               }
             }
           },
@@ -126,7 +126,7 @@
         ],
         "summary": "Post Feedback",
         "description": "推薦結果に 👍/👎 を付ける",
-        "operationId": "post_feedback_feedback_post",
+        "operationId": "post_feedback",
         "requestBody": {
           "content": {
             "application/json": {
@@ -171,7 +171,7 @@
         ],
         "summary": "List Favorites",
         "description": "端末のお気に入りのお酒IDの一覧",
-        "operationId": "list_favorites_favorites_get",
+        "operationId": "list_favorites",
         "parameters": [
           {
             "name": "device_id",
@@ -193,7 +193,7 @@
                   "items": {
                     "type": "string"
                   },
-                  "title": "Response List Favorites Favorites Get"
+                  "title": "Response List Favorites"
                 }
               }
             }
@@ -216,7 +216,7 @@
         ],
         "summary": "Add Favorite",
         "description": "お気に入りに登録する（登録済みなら何もしない）",
-        "operationId": "add_favorite_favorites_post",
+        "operationId": "add_favorite",
         "requestBody": {
           "required": true,
           "content": {
@@ -254,7 +254,7 @@
         ],
         "summary": "Remove Favorite",
         "description": "お気に入りから外す（未登録なら何もしない）",
-        "operationId": "remove_favorite_favorites__cocktail_id__delete",
+        "operationId": "remove_favorite",
         "parameters": [
           {
             "name": "cocktail_id",
@@ -299,7 +299,7 @@
         ],
         "summary": "Get Stats",
         "description": "店舗向けの集計（お酒ごとの 👍/👎・お気に入り数と、よく求められた味）",
-        "operationId": "get_stats_stats_get",
+        "operationId": "get_stats",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -339,7 +339,7 @@
   },
   "components": {
     "schemas": {
-      "Body_recommend_recommendations_post": {
+      "Body_recommend": {
         "properties": {
           "query": {
             "type": "string",
@@ -364,7 +364,7 @@
         "required": [
           "query"
         ],
-        "title": "Body_recommend_recommendations_post"
+        "title": "Body_recommend"
       },
       "Cocktail": {
         "properties": {
