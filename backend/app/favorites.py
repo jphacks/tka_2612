@@ -40,26 +40,26 @@ def remove(device_id: str, cocktail_id: str) -> int:
 def list_ids(device_id: str) -> list[str]:
     """端末のお気に入りのお酒のID（新しく登録した順）"""
     with closing(db.connect()) as conn:
-        rows = conn.execute(
+        rows: list[tuple[str]] = conn.execute(
             "SELECT cocktail_id FROM favorites WHERE device_id = ?"
             " ORDER BY created_at DESC, rowid DESC",
             (device_id,),
         ).fetchall()
-    return [row["cocktail_id"] for row in rows]
+    return [cocktail_id for (cocktail_id,) in rows]
 
 
 def counts() -> list[tuple[str, int]]:
     """お気に入りの総数が1以上のお酒の (ID, 総数)。多い順"""
     with closing(db.connect()) as conn:
-        rows = conn.execute(
+        rows: list[tuple[str, int]] = conn.execute(
             "SELECT cocktail_id, count FROM favorite_counts WHERE count > 0"
             " ORDER BY count DESC, cocktail_id"
         ).fetchall()
-    return [(row["cocktail_id"], row["count"]) for row in rows]
+    return rows
 
 
 def _count(conn: sqlite3.Connection, cocktail_id: str) -> int:
-    row = conn.execute(
+    row: tuple[int] | None = conn.execute(
         "SELECT count FROM favorite_counts WHERE cocktail_id = ?", (cocktail_id,)
     ).fetchone()
-    return row["count"] if row else 0
+    return row[0] if row else 0
