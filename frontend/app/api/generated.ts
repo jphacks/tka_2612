@@ -27,6 +27,41 @@ export interface Cocktail {
   ingredients: string[];
 }
 
+/**
+ * お酒ごとのお気に入りの総数
+ */
+export interface FavoriteCount {
+  cocktail: Cocktail;
+  /** お気に入りの総数（全端末） */
+  favorite_count: number;
+}
+
+/**
+ * お気に入りの登録
+ */
+export interface FavoriteRequest {
+  /**
+   * ブラウザごとのランダムな端末ID
+   * @minLength 1
+   * @maxLength 100
+   */
+  device_id: string;
+  /** お酒のID */
+  cocktail_id: string;
+}
+
+/**
+ * お気に入りの登録・解除の結果
+ */
+export interface FavoriteStatus {
+  /** お酒のID */
+  cocktail_id: string;
+  /** この端末でお気に入りに登録されているか */
+  favorited: boolean;
+  /** このお酒のお気に入りの総数（全端末） */
+  favorite_count: number;
+}
+
 export type ValidationErrorCtx = { [key: string]: unknown };
 
 export interface ValidationError {
@@ -111,6 +146,24 @@ export interface RecommendResponse {
   /** 一致度の高い順のおすすめ（上位5件まで） */
   recommendations: Recommendation[];
 }
+
+export type ListFavoritesParams = {
+  /**
+   * ブラウザごとのランダムな端末ID
+   * @minLength 1
+   * @maxLength 100
+   */
+  device_id: string;
+};
+
+export type RemoveFavoriteParams = {
+  /**
+   * ブラウザごとのランダムな端末ID
+   * @minLength 1
+   * @maxLength 100
+   */
+  device_id: string;
+};
 
 export type Health200 = { [key: string]: string };
 
@@ -434,6 +487,258 @@ export const recommend = async (
     status: res.status,
     headers: res.headers,
   } as recommendResponse;
+};
+
+export type addFavoriteResponse200 = {
+  data: FavoriteStatus;
+  status: 200;
+};
+
+export type addFavoriteResponse404 = {
+  data: void;
+  status: 404;
+};
+
+export type addFavoriteResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type addFavoriteResponseSuccess = addFavoriteResponse200 & {
+  headers: Headers;
+};
+export type addFavoriteResponseError = (
+  | addFavoriteResponse404
+  | addFavoriteResponse422
+) & {
+  headers: Headers;
+};
+
+export type addFavoriteResponse =
+  | addFavoriteResponseSuccess
+  | addFavoriteResponseError;
+
+export const getAddFavoriteUrl = () => {
+  return `${API_BASE_URL}/favorites`;
+};
+
+/**
+ * お気に入りに登録する（登録済みなら何もしない）
+ * @summary Add Favorite
+ */
+export const addFavorite = async (
+  favoriteRequest: FavoriteRequest,
+  options?: RequestInit,
+): Promise<addFavoriteResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  const res = await fetch(getAddFavoriteUrl(), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(favoriteRequest),
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: addFavoriteResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as addFavoriteResponse;
+};
+
+export type listFavoritesResponse200 = {
+  data: Cocktail[];
+  status: 200;
+};
+
+export type listFavoritesResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type listFavoritesResponseSuccess = listFavoritesResponse200 & {
+  headers: Headers;
+};
+export type listFavoritesResponseError = listFavoritesResponse422 & {
+  headers: Headers;
+};
+
+export type listFavoritesResponse =
+  | listFavoritesResponseSuccess
+  | listFavoritesResponseError;
+
+export const getListFavoritesUrl = (params: ListFavoritesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `${API_BASE_URL}/favorites?${stringifiedParams}`
+    : `${API_BASE_URL}/favorites`;
+};
+
+/**
+ * 端末のお気に入りのお酒（新しく登録した順）
+ * @summary List Favorites
+ */
+export const listFavorites = async (
+  params: ListFavoritesParams,
+  options?: RequestInit,
+): Promise<listFavoritesResponse> => {
+  const res = await fetch(getListFavoritesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listFavoritesResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as listFavoritesResponse;
+};
+
+export type removeFavoriteResponse200 = {
+  data: FavoriteStatus;
+  status: 200;
+};
+
+export type removeFavoriteResponse404 = {
+  data: void;
+  status: 404;
+};
+
+export type removeFavoriteResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type removeFavoriteResponseSuccess = removeFavoriteResponse200 & {
+  headers: Headers;
+};
+export type removeFavoriteResponseError = (
+  | removeFavoriteResponse404
+  | removeFavoriteResponse422
+) & {
+  headers: Headers;
+};
+
+export type removeFavoriteResponse =
+  | removeFavoriteResponseSuccess
+  | removeFavoriteResponseError;
+
+export const getRemoveFavoriteUrl = (
+  cocktailId: string,
+  params: RemoveFavoriteParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `${API_BASE_URL}/favorites/${cocktailId}?${stringifiedParams}`
+    : `${API_BASE_URL}/favorites/${cocktailId}`;
+};
+
+/**
+ * お気に入りから外す（未登録なら何もしない）
+ * @summary Remove Favorite
+ */
+export const removeFavorite = async (
+  cocktailId: string,
+  params: RemoveFavoriteParams,
+  options?: RequestInit,
+): Promise<removeFavoriteResponse> => {
+  const res = await fetch(getRemoveFavoriteUrl(cocktailId, params), {
+    ...options,
+    method: "DELETE",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: removeFavoriteResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as removeFavoriteResponse;
+};
+
+export type listFavoriteCountsResponse200 = {
+  data: FavoriteCount[];
+  status: 200;
+};
+
+export type listFavoriteCountsResponseSuccess =
+  listFavoriteCountsResponse200 & {
+    headers: Headers;
+  };
+
+export type listFavoriteCountsResponse = listFavoriteCountsResponseSuccess;
+
+export const getListFavoriteCountsUrl = () => {
+  return `${API_BASE_URL}/favorites/counts`;
+};
+
+/**
+ * お気に入りの総数が多い順のお酒（1件以上のもの）
+ * @summary List Favorite Counts
+ */
+export const listFavoriteCounts = async (
+  options?: RequestInit,
+): Promise<listFavoriteCountsResponse> => {
+  const res = await fetch(getListFavoriteCountsUrl(), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listFavoriteCountsResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as listFavoriteCountsResponse;
 };
 
 export type healthResponse200 = {
