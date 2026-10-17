@@ -10,6 +10,7 @@ from google.genai.interactions import Interaction
 from app import gemini, menu_reader
 from app.main import app
 from app.routers import menu
+from app.schemas import MenuScanResponse
 
 
 class TestMenuScan(unittest.TestCase):
@@ -32,7 +33,10 @@ class TestMenuScan(unittest.TestCase):
     def test_returns_names(self) -> None:
         res = self.scan()
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json(), {"names": ["MOJITO", "GIN TONIC"]})
+        self.assertEqual(
+            MenuScanResponse.model_validate_json(res.text),
+            MenuScanResponse(names=["MOJITO", "GIN TONIC"]),
+        )
         self.read.assert_called_once_with(b"png", "image/png")
 
     def test_not_image(self) -> None:
