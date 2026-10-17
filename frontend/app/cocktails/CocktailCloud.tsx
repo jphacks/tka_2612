@@ -1,12 +1,11 @@
 import { useEffect, useRef } from "react";
-import { type CloudScene, createCloudScene } from "./cloudScene";
-import type { Cocktail } from "./types";
+import { type CloudScene, createCloudScene, type Layout } from "./cloudScene";
 
 export type FocusRequest = { id: number; zoomIn: boolean; key: number };
 
 type Props = {
-  cocktails: Cocktail[];
-  relevance: Float32Array | null;
+  // null のあいだは何も描かない（UMAP の計算中など）
+  layout: Layout | null;
   selectedId: number | null;
   // 検索で最も一致したカクテル。この点だけ色を変える
   bestMatchId: number | null;
@@ -16,8 +15,7 @@ type Props = {
 };
 
 export function CocktailCloud({
-  cocktails,
-  relevance,
+  layout,
   selectedId,
   bestMatchId,
   focus,
@@ -34,19 +32,18 @@ export function CocktailCloud({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const scene = createCloudScene(container, cocktails, (id) =>
-      onSelectRef.current(id),
-    );
+    const scene = createCloudScene(container, (id) => onSelectRef.current(id));
     sceneRef.current = scene;
     return () => {
       scene.dispose();
       sceneRef.current = null;
     };
-  }, [cocktails]);
+  }, []);
 
+  // 以下の effect は宣言順に実行されるので、点を入れ替えてから選択・移動が反映される
   useEffect(() => {
-    sceneRef.current?.setRelevance(relevance);
-  }, [relevance]);
+    if (layout) sceneRef.current?.setLayout(layout);
+  }, [layout]);
 
   useEffect(() => {
     sceneRef.current?.setSelected(selectedId);

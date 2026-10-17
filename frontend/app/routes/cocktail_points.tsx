@@ -1,8 +1,10 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { CocktailCloud, type FocusRequest } from "../cocktails/CocktailCloud";
+import type { Layout } from "../cocktails/cloudScene";
 import { BASES, mockCocktails } from "../cocktails/mock";
-import { type SearchResult, searchCocktails } from "../cocktails/search";
+import { searchCocktails } from "../cocktails/search";
 import type { Cocktail } from "../cocktails/types";
+import { createUmapClient, type UmapClient } from "../cocktails/umapClient";
 import type { Route } from "./+types/cocktail_points";
 
 export function meta(_: Route.MetaArgs) {
@@ -15,37 +17,43 @@ export function meta(_: Route.MetaArgs) {
   ];
 }
 
+// 全カクテルを UMAP で2次元にした配置（検索していないときに表示する）
+async function projectAll(client: UmapClient): Promise<Layout> {
+  const positions = await client.project(mockCocktails.map((c) => c.embedding));
+  return { cocktails: mockCocktails, positions, relevance: null };
+}
+
 export default function CocktailPoints() {
   const [query, setQuery] = useState("");
-  const [result, setResult] = useState<SearchResult | null>(null);
+  const [layout, setLayout] = useState<Layout | null>(null);
+  const [computing, setComputing] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  // 表示中の検索結果の説明（検索していなければ null）
+  const [summary, setSummary] = useState<string | null>(null);
+  const [bestMatchId, setBestMatchId] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [focus, setFocus] = useState<FocusRequest | null>(null);
+  const umapRef = useRef<UmapClient | null>(null);
+  const allLayoutRef = useRef<Promise<Layout> | null>(null);
+  // 古い UMAP の結果で表示を上書きしないよう、最新の要求だけを反映する
+  const requestRef = useRef(0);
 
-  const focusOn = (id: number, zoomIn: boolean) => {
-    setFocus((prev) => ({ id, zoomIn, key: (prev?.key ?? 0) + 1 }));
-  };
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    const next = searchCocktails(query, mockCocktails);
-    setResult(next);
-    setNotFound(next === null && query.trim() !== "");
-    // 最も一致したカクテルを選択状態にして、そこに近づく
-    setSelectedId(next ? next.ranking[0] : null);
-    if (next) focusOn(next.ranking[0], true);
-  };
-
-  const handleClear = () => {
-    setQuery("");
-    setResult(null);
-    setNotFound(false);
-  };
-
-  const handleSelect = (id: number | null) => {
-    setSelectedId(id);
-    if (id !== null) focusOn(id, false);
-  };
+  useEffect(() => {
+    const client = createUmapClient();
+    umapRef.current = client;
+    allLayoutRef.current = projectAll(client);
+    const request = ++requestRef.current;
+    allLayoutRef.current.then((all) => {
+      if (request !== requestRef.current) return;
+      setLayout(all);
+      setComputing(false);
+    });
+    return () => {
+      client.dispose();
+      umapRef.current = null;
+      allLayoutRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -55,15 +63,87 @@ export default function CocktailPoints() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const focusOn = (id: number, zoomIn: boolean) => {
+    setFocus((prev) => ({ id, zoomIn, key: (prev?.key ?? 0) + 1 }));
+  };
+
+  const showAll = async () => {
+    const client = umapRef.current;
+    if (!client) return;
+    const request = ++requestRef.current;
+    setComputing(true);
+    allLayoutRef.current ??= projectAll(client);
+    const all = await allLayoutRef.current;
+    if (request !== requestRef.current) return;
+    setLayout(all);
+    setComputing(false);
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const trimmed = query.trim();
+    const result = searchCocktails(trimmed, mockCocktails);
+    setNotFound(result === null && trimmed !== "");
+    if (!result) {
+      if (trimmed === "") handleClear();
+      return;
+    }
+    const client = umapRef.current;
+    if (!client) return;
+
+    // 入力に近いカクテルだけを集め、その中で UMAP をかけ直す
+    const request = ++requestRef.current;
+    setComputing(true);
+    const positions = await client.project(
+      result.cocktails.map((c) => c.embedding),
+    );
+    if (request !== requestRef.current) return;
+    const best = result.cocktails[0].id;
+    setLayout({
+      cocktails: result.cocktails,
+      positions,
+      relevance: result.relevance,
+    });
+    setSummary(`「${trimmed}」に近い ${result.cocktails.length} 件`);
+    setComputing(false);
+    // 最も一致したカクテルを選択状態にして、そこに近づく
+    setBestMatchId(best);
+    setSelectedId(best);
+    focusOn(best, true);
+  };
+
+  const handleClear = () => {
+    setQuery("");
+    setNotFound(false);
+    setSummary(null);
+    setBestMatchId(null);
+    setSelectedId(null);
+    showAll();
+  };
+
+  const handleSelect = (id: number | null) => {
+    setSelectedId(id);
+    if (id !== null) focusOn(id, false);
+  };
+
   const selected = selectedId === null ? null : mockCocktails[selectedId];
+  const selectedIndex = selected
+    ? (layout?.cocktails.findIndex((c) => c.id === selected.id) ?? -1)
+    : -1;
+  const selectedRelevance =
+    selectedIndex >= 0 ? (layout?.relevance?.[selectedIndex] ?? null) : null;
+  const status = computing
+    ? "マップを計算しています…"
+    : notFound
+      ? "近いカクテルが見つかりませんでした"
+      : summary;
 
   return (
     <main className="relative h-dvh overflow-hidden bg-slate-950 text-slate-100">
       <CocktailCloud
-        cocktails={mockCocktails}
-        relevance={result?.relevance ?? null}
+        layout={layout}
         selectedId={selectedId}
-        bestMatchId={result?.ranking[0] ?? null}
+        bestMatchId={bestMatchId}
         focus={focus}
         onSelect={handleSelect}
       />
@@ -88,13 +168,16 @@ export default function CocktailPoints() {
           {selected && (
             <DetailCard
               cocktail={selected}
-              relevance={result ? result.relevance[selected.id] : null}
+              relevance={selectedRelevance}
               onClose={() => setSelectedId(null)}
             />
           )}
-          {notFound && (
-            <p className="text-center text-sm text-slate-400">
-              一致するカクテルが見つかりませんでした
+          {status && (
+            <p
+              className="text-center text-sm text-slate-400"
+              aria-live="polite"
+            >
+              {status}
             </p>
           )}
           <form

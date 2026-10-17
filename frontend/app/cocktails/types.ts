@@ -7,6 +7,6 @@ export type Cocktail = {
   abv: number;
   description: string;
   tags: string[];
-  // 高次元の特徴量ベクトルを2次元に圧縮した座標
-  vector: Vec2;
+  // 名前や特徴から作った高次元の特徴量ベクトル（長さ 1）
+  embedding: number[];
 };

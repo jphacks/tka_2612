@@ -1,7 +1,7 @@
 import { BASES } from "./mock";
-import type { Cocktail } from "./types";
+import type { Cocktail, Vec2 } from "./types";
 
-// 検索していないときの関連度（全点を中くらいの濃さで表示する）
+// 関連度がないとき（検索していないとき）の濃さ・大きさ
 const IDLE_RELEVANCE = 0.55;
 // 全体表示のときの点の半径（px）
 const POINT_RADIUS = 2.5;
@@ -13,8 +13,9 @@ const MAX_ZOOM = 40;
 const LABEL_ZOOM = 2.5;
 const MAX_LABELS = 14;
 // 検索結果に近づくときの倍率
-const FOCUS_ZOOM = 6;
+const FOCUS_ZOOM = 4;
 const FLIGHT_MS = 900;
+const FADE_IN_MS = 400;
 const PICK_RADIUS_PX = 12;
 const CLICK_MOVE_TOLERANCE_PX = 6;
 // 下部の UI と重ならないよう、表示の中心を画面の高さに対してこの割合だけ上にずらす
@@ -28,8 +29,17 @@ const BEST_MATCH_COLOR = "#00ffa3";
 const LABEL_FONT = "12px Inter, ui-sans-serif, system-ui, sans-serif";
 const PINNED_LABEL_FONT = `600 ${LABEL_FONT}`;
 
+// 表示するカクテルと、UMAP で求めた2次元座標
+export type Layout = {
+  cocktails: Cocktail[];
+  positions: Vec2[];
+  // cocktails と同じ並びの関連度（0〜1）。検索していなければ null
+  relevance: Float32Array | null;
+};
+
 export type CloudScene = {
-  setRelevance(relevance: Float32Array | null): void;
+  // 表示する点を入れ替え、全体が見えるように表示し直す
+  setLayout(layout: Layout): void;
   setSelected(id: number | null): void;
   setBestMatch(id: number | null): void;
   // zoomIn が true なら点に近づき、false なら点が隠れているときだけ中心に移す
@@ -46,7 +56,6 @@ type Rect = { x: number; y: number; w: number; h: number };
 
 export function createCloudScene(
   container: HTMLElement,
-  cocktails: Cocktail[],
   onPick: (id: number | null) => void,
 ): CloudScene {
   const canvas = document.createElement("canvas");
@@ -57,42 +66,36 @@ export function createCloudScene(
   canvas.style.cursor = "grab";
   container.appendChild(canvas);
 
-  const count = cocktails.length;
-  const xs = cocktails.map((c) => c.vector[0]);
-  const ys = cocktails.map((c) => c.vector[1]);
   const baseColors = new Map<string, string>(
     BASES.map((b) => [b.name, b.color]),
   );
-  const colors = cocktails.map((c) => baseColors.get(c.base) ?? "#ffffff");
-  const currentRelevance = new Float32Array(count).fill(IDLE_RELEVANCE);
-  const targetRelevance = new Float32Array(count).fill(IDLE_RELEVANCE);
-  // 関連度の低い点から描き、関連度の高い点を上に重ねる
-  let drawOrder = cocktails.map((_, i) => i);
 
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  const spanX = Math.max(maxX - minX, 1);
-  const spanY = Math.max(maxY - minY, 1);
+  // 表示中の点
+  let cocktails: Cocktail[] = [];
+  let xs: number[] = [];
+  let ys: number[] = [];
+  let colors: string[] = [];
+  let relevance: Float32Array = new Float32Array(0);
+  let indexById = new Map<number, number>();
+  // 関連度の低い点から描き、関連度の高い点を上に重ねる
+  let drawOrder: number[] = [];
+  let bounds = { minX: -1, maxX: 1, minY: -1, maxY: 1 };
 
   let width = 1;
   let height = 1;
   let dpr = 1;
   // 全体表示のときの、データ座標 1 あたりのピクセル数
   let fitScale = 1;
-  const view: View = {
-    x: (minX + maxX) / 2,
-    y: (minY + maxY) / 2,
-    zoom: 1,
-  };
-  let selectedIndex = -1;
-  let bestIndex = -1;
+  const view: View = { x: 0, y: 0, zoom: 1 };
+  let selectedId: number | null = null;
+  let bestId: number | null = null;
   let hoveredIndex = -1;
-  let relevanceAnimating = false;
   let flight: Flight | null = null;
+  let fadeStartedAt = Number.NEGATIVE_INFINITY;
   let dirty = true;
 
+  const indexOf = (id: number | null) =>
+    id === null ? -1 : (indexById.get(id) ?? -1);
   const scale = () => fitScale * view.zoom;
   const originY = () => height * (0.5 - VIEW_SHIFT_UP);
   const screenX = (i: number) => (xs[i] - view.x) * scale() + width / 2;
@@ -104,13 +107,19 @@ export function createCloudScene(
     sy <= height + margin;
 
   const pointRadius = (i: number) => {
-    const r = currentRelevance[i];
+    const r = relevance[i];
     const radius =
       POINT_RADIUS * (0.4 + 1.6 * r * r) * Math.sqrt(Math.max(view.zoom, 1));
     return Math.min(
-      i === selectedIndex ? Math.max(radius * 1.8, 6) : radius,
+      i === indexOf(selectedId) ? Math.max(radius * 1.8, 6) : radius,
       MAX_POINT_RADIUS,
     );
+  };
+
+  const updateFitScale = () => {
+    const spanX = Math.max(bounds.maxX - bounds.minX, 1e-6);
+    const spanY = Math.max(bounds.maxY - bounds.minY, 1e-6);
+    fitScale = Math.min((width * 0.9) / spanX, (height * FIT_HEIGHT) / spanY);
   };
 
   const resize = () => {
@@ -121,22 +130,22 @@ export function createCloudScene(
     canvas.height = Math.round(height * dpr);
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
-    fitScale = Math.min((width * 0.9) / spanX, (height * FIT_HEIGHT) / spanY);
+    updateFitScale();
     dirty = true;
   };
   resize();
   const resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(container);
 
-  const drawPoint = (i: number) => {
+  const drawPoint = (i: number, fade: number) => {
     const sx = screenX(i);
     const sy = screenY(i);
     const radius = pointRadius(i);
     if (!isOnScreen(sx, sy, radius + 4)) return;
-    const r = currentRelevance[i];
-    const isSelected = i === selectedIndex;
-    ctx.globalAlpha = isSelected ? 1 : 0.04 + 0.91 * r ** 1.6;
-    ctx.fillStyle = i === bestIndex ? BEST_MATCH_COLOR : colors[i];
+    const isSelected = cocktails[i].id === selectedId;
+    const alpha = isSelected ? 1 : 0.04 + 0.91 * relevance[i] ** 1.6;
+    ctx.globalAlpha = alpha * fade;
+    ctx.fillStyle = cocktails[i].id === bestId ? BEST_MATCH_COLOR : colors[i];
     ctx.beginPath();
     ctx.arc(sx, sy, radius, 0, Math.PI * 2);
     ctx.fill();
@@ -153,15 +162,15 @@ export function createCloudScene(
     a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
   // 選択中・ホバー中の点は常に、近づいたときは関連度の高い点から重ならないように名前を出す
-  const drawLabels = () => {
-    const pinned = [selectedIndex, hoveredIndex].filter(
+  const drawLabels = (fade: number) => {
+    const pinned = [indexOf(selectedId), hoveredIndex].filter(
       (i, k, arr) => i >= 0 && arr.indexOf(i) === k,
     );
     const others: number[] = [];
     if (view.zoom >= LABEL_ZOOM) {
       const cx = width / 2;
       const cy = originY();
-      for (let i = 0; i < count; i++) {
+      for (let i = 0; i < cocktails.length; i++) {
         if (pinned.includes(i)) continue;
         if (isOnScreen(screenX(i), screenY(i), 0)) others.push(i);
       }
@@ -169,12 +178,11 @@ export function createCloudScene(
         (screenX(i) - cx) ** 2 + (screenY(i) - cy) ** 2;
       others.sort(
         (a, b) =>
-          currentRelevance[b] - currentRelevance[a] ||
-          centerDistance(a) - centerDistance(b),
+          relevance[b] - relevance[a] || centerDistance(a) - centerDistance(b),
       );
     }
 
-    const fadeIn = Math.min(1, view.zoom - LABEL_ZOOM + 0.3);
+    const zoomFade = Math.min(1, view.zoom - LABEL_ZOOM + 0.3);
     const placed: Rect[] = [];
     ctx.textBaseline = "middle";
     ctx.shadowColor = "rgb(0 0 0 / 0.9)";
@@ -193,24 +201,27 @@ export function createCloudScene(
       };
       if (!isPinned && placed.some((p) => overlaps(p, rect))) continue;
       placed.push(rect);
-      ctx.globalAlpha = isPinned
-        ? 1
-        : fadeIn * (0.35 + 0.65 * currentRelevance[i]);
+      const alpha = isPinned ? 1 : zoomFade * (0.35 + 0.65 * relevance[i]);
+      ctx.globalAlpha = alpha * fade;
       ctx.fillStyle = "#f1f5f9";
       ctx.fillText(name, rect.x, rect.y + rect.h / 2);
     }
     ctx.shadowColor = "transparent";
   };
 
-  const render = () => {
+  const render = (fade: number) => {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
+    const selectedIndex = indexOf(selectedId);
+    const bestIndex = indexOf(bestId);
     for (const i of drawOrder) {
-      if (i !== selectedIndex && i !== bestIndex) drawPoint(i);
+      if (i !== selectedIndex && i !== bestIndex) drawPoint(i, fade);
     }
-    if (bestIndex >= 0 && bestIndex !== selectedIndex) drawPoint(bestIndex);
-    if (selectedIndex >= 0) drawPoint(selectedIndex);
-    drawLabels();
+    if (bestIndex >= 0 && bestIndex !== selectedIndex) {
+      drawPoint(bestIndex, fade);
+    }
+    if (selectedIndex >= 0) drawPoint(selectedIndex, fade);
+    drawLabels(fade);
     ctx.globalAlpha = 1;
   };
 
@@ -218,7 +229,7 @@ export function createCloudScene(
   const pickAt = (px: number, py: number): number | null => {
     let best: number | null = null;
     let bestDistance = Number.POSITIVE_INFINITY;
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < cocktails.length; i++) {
       const d = (screenX(i) - px) ** 2 + (screenY(i) - py) ** 2;
       const reach = Math.max(PICK_RADIUS_PX, pointRadius(i) + 4);
       if (d <= reach ** 2 && d < bestDistance) {
@@ -341,27 +352,8 @@ export function createCloudScene(
   canvas.addEventListener("pointerleave", handlePointerLeave);
   canvas.addEventListener("wheel", handleWheel, { passive: false });
 
-  let lastFrameAt = performance.now();
   let frame = 0;
   const tick = (now: number) => {
-    const dt = (now - lastFrameAt) / 1000;
-    lastFrameAt = now;
-
-    if (relevanceAnimating) {
-      const k = Math.min(1, dt * 6);
-      let maxDiff = 0;
-      for (let i = 0; i < count; i++) {
-        const diff = targetRelevance[i] - currentRelevance[i];
-        currentRelevance[i] += diff * k;
-        maxDiff = Math.max(maxDiff, Math.abs(diff));
-      }
-      if (maxDiff < 0.001) {
-        currentRelevance.set(targetRelevance);
-        relevanceAnimating = false;
-      }
-      dirty = true;
-    }
-
     if (flight) {
       const t = Math.min(1, (now - flight.startedAt) / FLIGHT_MS);
       const eased = t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2;
@@ -374,32 +366,52 @@ export function createCloudScene(
       dirty = true;
     }
 
+    const fade = Math.min(1, (now - fadeStartedAt) / FADE_IN_MS);
+    if (fade < 1) dirty = true;
+
     if (dirty) {
-      render();
+      render(fade);
       dirty = false;
     }
     frame = requestAnimationFrame(tick);
   };
   frame = requestAnimationFrame(tick);
 
-  const indexOf = (id: number | null) =>
-    id === null ? -1 : cocktails.findIndex((c) => c.id === id);
-
   return {
-    setRelevance(relevance) {
-      if (relevance) targetRelevance.set(relevance);
-      else targetRelevance.fill(IDLE_RELEVANCE);
+    setLayout(layout) {
+      cocktails = layout.cocktails;
+      xs = layout.positions.map((p) => p[0]);
+      ys = layout.positions.map((p) => p[1]);
+      colors = cocktails.map((c) => baseColors.get(c.base) ?? "#ffffff");
+      relevance =
+        layout.relevance ??
+        new Float32Array(cocktails.length).fill(IDLE_RELEVANCE);
+      indexById = new Map(cocktails.map((c, i) => [c.id, i]));
       drawOrder = cocktails
         .map((_, i) => i)
-        .sort((a, b) => targetRelevance[a] - targetRelevance[b]);
-      relevanceAnimating = true;
+        .sort((a, b) => relevance[a] - relevance[b]);
+      hoveredIndex = -1;
+
+      bounds = {
+        minX: Math.min(...xs),
+        maxX: Math.max(...xs),
+        minY: Math.min(...ys),
+        maxY: Math.max(...ys),
+      };
+      updateFitScale();
+      view.x = (bounds.minX + bounds.maxX) / 2;
+      view.y = (bounds.minY + bounds.maxY) / 2;
+      view.zoom = 1;
+      flight = null;
+      fadeStartedAt = performance.now();
+      dirty = true;
     },
     setSelected(id) {
-      selectedIndex = indexOf(id);
+      selectedId = id;
       dirty = true;
     },
     setBestMatch(id) {
-      bestIndex = indexOf(id);
+      bestId = id;
       dirty = true;
     },
     flyTo(id, zoomIn) {

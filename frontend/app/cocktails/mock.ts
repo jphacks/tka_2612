@@ -1,4 +1,6 @@
-import type { Cocktail, Vec2 } from "./types";
+import { embedText } from "./embedding";
+import { mulberry32 } from "./random";
+import type { Cocktail } from "./types";
 
 // バックエンドができるまでのモックデータ。
 // SSR とクライアントで同じデータになるよう、シード付き乱数で決定的に生成する
@@ -103,16 +105,6 @@ const SCENES = [
   "締めの一杯",
 ];
 
-function mulberry32(seed: number): () => number {
-  let a = seed;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 function generateMockCocktails(count: number, seed = 2612): Cocktail[] {
   const rand = mulberry32(seed);
   const pick = <T>(items: readonly T[]): T =>
@@ -125,23 +117,11 @@ function generateMockCocktails(count: number, seed = 2612): Cocktail[] {
     }
     return result;
   };
-  const gaussian = () => {
-    const u = Math.max(rand(), 1e-9);
-    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand());
-  };
-
-  // ベース酒ごとにクラスタの中心を円周上に並べ、点群に構造を持たせる
-  const centers: Vec2[] = BASES.map((_, i) => {
-    const theta = (2 * Math.PI * i) / BASES.length;
-    const radius = 7;
-    return [Math.cos(theta) * radius, Math.sin(theta) * radius];
-  });
 
   const usedNames = new Set<string>();
   const cocktails: Cocktail[] = [];
   while (cocktails.length < count) {
-    const baseIndex = Math.floor(rand() * BASES.length);
-    const base = BASES[baseIndex].name;
+    const base = pick(BASES).name;
     const name = `${pick(PREFIXES)}・${base}・${pick(STYLES)}`;
     if (usedNames.has(name)) continue;
     usedNames.add(name);
@@ -149,19 +129,16 @@ function generateMockCocktails(count: number, seed = 2612): Cocktail[] {
     const [ing1, ing2] = pickMany(INGREDIENTS, 2);
     const tastes = pickMany(TASTES, 2);
     const scene = pick(SCENES);
-    const center = centers[baseIndex];
-    const spread = 1.8;
+    const tags = [base, ing1, ing2, ...tastes, scene];
     cocktails.push({
       id: cocktails.length,
       name,
       base,
       abv: Math.round(5 + rand() * 30),
       description: `${base}をベースに${ing1}と${ing2}を合わせた一杯。${tastes[0]}で${tastes[1]}な味わいで、${scene}におすすめ。`,
-      tags: [base, ing1, ing2, ...tastes],
-      vector: [
-        center[0] + gaussian() * spread,
-        center[1] + gaussian() * spread,
-      ],
+      tags,
+      // 定型文の部分で似てしまわないよう、説明文ではなく名前と特徴から作る
+      embedding: embedText([name, ...tags].join(" ")),
     });
   }
   return cocktails;
