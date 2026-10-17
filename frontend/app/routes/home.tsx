@@ -31,8 +31,8 @@ export default function Home() {
     const next = searchCocktails(query, mockCocktails);
     setResult(next);
     setNotFound(next === null && query.trim() !== "");
-    // 説明はクリックしたときだけ出すので、検索では視点を近づけるだけにする
-    setSelectedId(null);
+    // 最も一致したカクテルを選択状態にして、そこに近づく
+    setSelectedId(next ? next.ranking[0] : null);
     if (next) focusOn(next.ranking[0], true);
   };
 
