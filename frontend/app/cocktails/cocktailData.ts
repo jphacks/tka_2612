@@ -13,12 +13,6 @@ export type CocktailPoint = Cocktail & {
   vector: number[];
 };
 
-// 検索 API は一致度の高い順に100件返す。そのうち、最も近いお酒から
-// 一致度の差がこの値以内のものだけを「近い」とみなして集める
-const SCORE_MARGIN = 0.06;
-// UMAP で形が出るよう、最低限この件数は集める
-const MIN_RESULTS = 30;
-
 export type SearchHit = { cocktails: CocktailPoint[]; scores: number[] };
 
 // 全件のお酒とベクトルを取得して組み合わせる
@@ -37,7 +31,7 @@ export async function fetchCocktailPoints(): Promise<CocktailPoint[]> {
   });
 }
 
-// 入力文に近いお酒を検索し、一致度が近いものだけに絞る。失敗したら Error を投げる
+// 入力文に近いお酒を検索する（API が一致度の高い順に返す100件）。失敗したら Error を投げる
 export async function searchNearby(
   text: string,
   pointsById: Map<string, CocktailPoint>,
@@ -50,13 +44,10 @@ export async function searchNearby(
   }
   if (res.status !== 200) throw new Error("検索に失敗しました");
 
+  // ベクトルを取得できていないお酒は地図に置けないので除く
   const results = res.data.results.filter((r) => pointsById.has(r.cocktail.id));
-  const top = results[0]?.score ?? 0;
-  const near = results.filter(
-    (r, i) => i < MIN_RESULTS || r.score >= top - SCORE_MARGIN,
-  );
   return {
-    cocktails: near.flatMap((r) => pointsById.get(r.cocktail.id) ?? []),
-    scores: near.map((r) => r.score),
+    cocktails: results.flatMap((r) => pointsById.get(r.cocktail.id) ?? []),
+    scores: results.map((r) => r.score),
   };
 }
