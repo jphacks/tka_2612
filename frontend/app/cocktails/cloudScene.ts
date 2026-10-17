@@ -31,10 +31,11 @@ const vertexShader = /* glsl */ `
     gl_Position = projectionMatrix * mvPosition;
 
     float selected = step(abs(aIndex - uSelected), 0.5);
-    float worldSize = uSize * (0.5 + 0.8 * aRelevance) * (1.0 + selected * 0.8);
+    // 関連度が高い点ほど大きくする（二乗で上位の点を強調する）
+    float worldSize = uSize * (0.4 + 1.6 * aRelevance * aRelevance) * (1.0 + selected * 0.8);
     float pixelSize = worldSize * projectionMatrix[1][1] * uViewportHeight * 0.5 / -mvPosition.z;
     float minSize = mix(1.5, 14.0, selected) * uPixelRatio;
-    gl_PointSize = clamp(pixelSize, minSize, 56.0 * uPixelRatio);
+    gl_PointSize = clamp(pixelSize, minSize, 72.0 * uPixelRatio);
 
     vColor = aColor;
     vAlpha = max(mix(0.04, 0.95, pow(aRelevance, 1.6)), selected);
