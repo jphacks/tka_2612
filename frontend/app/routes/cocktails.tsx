@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { SiteFooter, SiteHeader } from "~/components/site-chrome";
 import { recommendCocktails } from "~/data/cocktails";
 import {
   loadRecommendationSession,
@@ -41,20 +42,11 @@ export default function Cocktails() {
 
   return (
     <main className="site-shell">
-      <header className="topbar">
-        <Link className="brand" to="/" aria-label="SIP ホーム">
-          <span className="brand-mark" aria-hidden="true">
-            S
-          </span>
-          <span>
-            SIP<span className="brand-period">.</span>
-          </span>
-        </Link>
-        <span className="topbar-note">あなたに合う一杯を見つけよう</span>
+      <SiteHeader>
         <Link className="topbar-link" to="/">
           ホームへ戻る <span aria-hidden="true">↗</span>
         </Link>
-      </header>
+      </SiteHeader>
 
       <section
         className="results-section list-page"
@@ -176,18 +168,7 @@ export default function Cocktails() {
         )}
       </section>
 
-      <footer className="footer">
-        <Link className="brand footer-brand" to="/" aria-label="SIP ホーム">
-          <span className="brand-mark" aria-hidden="true">
-            S
-          </span>
-          <span>
-            SIP<span className="brand-period">.</span>
-          </span>
-        </Link>
-        <span>Find a drink that feels like you.</span>
-        <span className="footer-year">JPHACKS 2026</span>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

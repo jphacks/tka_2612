@@ -10,7 +10,6 @@ export type Cocktail = {
   tags: string[];
   color: string;
   matchTerms: string[];
-  menuPosition: { x: number; y: number };
   detail: string;
 };
 
@@ -39,7 +38,6 @@ export const cocktails: Cocktail[] = [
       "暑",
       "雨上がり",
     ],
-    menuPosition: { x: 50, y: 13 },
     detail:
       "ラムにミント、ライム、ソーダを合わせたキューバ生まれのカクテル。ミントの清涼感とライムの酸味で、気分をリフレッシュしたい夜におすすめです。",
   },
@@ -61,7 +59,6 @@ export const cocktails: Cocktail[] = [
       "飲みやす",
       "初心者",
     ],
-    menuPosition: { x: 50, y: 25 },
     detail:
       "カシスの深い甘みをオレンジジュースで軽やかに仕上げた、カクテルの定番。甘酸っぱく親しみやすい味わいで、初めての一杯にもおすすめです。",
   },
@@ -76,7 +73,6 @@ export const cocktails: Cocktail[] = [
     tags: ["すっきり", "定番"],
     color: "mint",
     matchTerms: ["さっぱり", "すっきり", "苦", "爽やか", "定番"],
-    menuPosition: { x: 50, y: 37 },
     detail:
       "ジンのボタニカルな香りにトニックウォーターのほろ苦さを重ねた定番カクテル。食事にも合わせやすい、すっきりした味わいです。",
   },
@@ -91,7 +87,6 @@ export const cocktails: Cocktail[] = [
     tags: ["辛口", "ドライ"],
     color: "blue",
     matchTerms: ["強", "辛口", "ドライ", "大人", "夜"],
-    menuPosition: { x: 50, y: 49 },
     detail:
       "ジンとドライベルモットを合わせた、シャープで奥行きのある味わい。オリーブの香りがアクセントになる、クラシックな一杯です。",
   },
@@ -116,7 +111,6 @@ export const cocktails: Cocktail[] = [
       "慰め",
       "疲れ",
     ],
-    menuPosition: { x: 50, y: 61 },
     detail:
       "コーヒーの香ばしさとミルクのやさしい口当たりが楽しめる、デザートのようなカクテル。苦味と甘みのバランスがよく、ゆっくり過ごしたいときに。",
   },
@@ -137,7 +131,6 @@ export const cocktails: Cocktail[] = [
       "苦",
       "しょっぱ",
     ],
-    menuPosition: { x: 50, y: 73 },
     detail:
       "グレープフルーツの酸味とほろ苦さを、グラスの縁の塩が引き立てます。すっきりした柑橘系が飲みたいときにぴったりです。",
   },
@@ -159,7 +152,6 @@ export const cocktails: Cocktail[] = [
       "失恋",
       "切な",
     ],
-    menuPosition: { x: 50, y: 85 },
     detail:
       "カンパリのほろ苦さ、グレープフルーツの酸味、トニックの泡が重なるイタリア生まれのカクテル。ほろ苦い余韻を楽しみたい方へ。",
   },
@@ -174,7 +166,6 @@ export const cocktails: Cocktail[] = [
     tags: ["酸味", "華やか"],
     color: "blue",
     matchTerms: ["酸", "強", "ライム", "祝", "パーティ", "テンション"],
-    menuPosition: { x: 50, y: 85 },
     detail:
       "テキーラとライムのきりっとした酸味に、グラスの縁の塩がアクセント。華やかな場面や気分を上げたい夜によく合います。",
   },
@@ -197,7 +188,6 @@ export const cocktails: Cocktail[] = [
       "クリーミー",
       "夏",
     ],
-    menuPosition: { x: 50, y: 85 },
     detail:
       "ラムにパイナップルとココナッツを合わせた、南国生まれのクリーミーなカクテル。トロピカルな甘さを楽しみたいときに。",
   },
@@ -220,7 +210,6 @@ export const cocktails: Cocktail[] = [
       "飲みやす",
       "初心者",
     ],
-    menuPosition: { x: 50, y: 85 },
     detail:
       "桃の香りが豊かなピーチリキュールとオレンジジュースを合わせた、まろやかなカクテル。アルコール感が穏やかで、デザート感覚で楽しめます。",
   },
@@ -242,7 +231,6 @@ export const cocktails: Cocktail[] = [
       "元気",
       "雨上がり",
     ],
-    menuPosition: { x: 50, y: 85 },
     detail:
       "ウォッカにジンジャーの刺激とライムの爽快感を合わせたカクテル。気分を切り替えたいときや、すっきりした一杯が欲しい日に。",
   },
@@ -269,7 +257,6 @@ export const cocktails: Cocktail[] = [
       "祝",
       "デート",
     ],
-    menuPosition: { x: 50, y: 85 },
     detail:
       "クランベリーの甘酸っぱさと柑橘の香りが調和した、鮮やかな色合いの一杯。華やかな気分を楽しみたい夜におすすめです。",
   },
@@ -293,7 +280,6 @@ export const cocktails: Cocktail[] = [
       "失恋",
       "疲れ",
     ],
-    menuPosition: { x: 50, y: 85 },
     detail:
       "温かいコーヒーにウイスキーと生クリームを重ねたホットカクテル。冷えた夜や、心をゆっくり休めたいときに。",
   },
@@ -308,7 +294,6 @@ export const cocktails: Cocktail[] = [
     tags: ["軽やか", "華やか"],
     color: "peach",
     matchTerms: ["フルーティ", "オレンジ", "華やか", "祝", "乾杯", "軽"],
-    menuPosition: { x: 50, y: 85 },
     detail:
       "シャンパンの繊細な泡とオレンジジュースの果実感が楽しめる軽やかなカクテル。乾杯やお祝いの席にもよく合います。",
   },
@@ -329,7 +314,6 @@ export const cocktails: Cocktail[] = [
       "すっきり",
       "グレープフルーツ",
     ],
-    menuPosition: { x: 50, y: 85 },
     detail:
       "ライチの華やかな香りとグレープフルーツのほろ苦さが調和した、青い色合いも美しい一杯。すっきりした後味が好きな方にぴったりです。",
   },
@@ -343,31 +327,17 @@ function stableJitter(text: string): number {
   return (hash / 1000) * 0.04;
 }
 
-function scoreCocktail(query: string, cocktail: Cocktail): number {
+// 入力文に含まれる語が、お酒の特徴語・材料にいくつ当てはまるかで相性を出す
+export function scoreCocktail(cocktail: Cocktail, query: string): number {
+  const normalizedQuery = query.toLocaleLowerCase();
   const searchableTerms = [...cocktail.matchTerms, ...cocktail.ingredients];
   const matchedTerms = searchableTerms.filter((term) =>
-    query.includes(term.toLocaleLowerCase()),
+    normalizedQuery.includes(term.toLocaleLowerCase()),
   ).length;
   return Math.min(
     0.97,
-    0.45 + matchedTerms * 0.15 + stableJitter(cocktail.name + query),
+    0.45 + matchedTerms * 0.15 + stableJitter(cocktail.name + normalizedQuery),
   );
-}
-
-export function rankCocktails(query: string): Recommendation[] {
-  const normalizedQuery = query.toLocaleLowerCase();
-
-  return cocktails
-    .map((cocktail, index) => ({
-      cocktail,
-      score: scoreCocktail(normalizedQuery, cocktail),
-      index,
-    }))
-    .sort(
-      (first, second) =>
-        second.score - first.score || first.index - second.index,
-    )
-    .map(({ cocktail, score }) => ({ cocktail, score }));
 }
 
 function normalizeMenuText(text: string): string {
@@ -384,58 +354,54 @@ function getMenuItemName(text: string): string {
     .trim();
 }
 
+// メニューの1行に、このお酒の名前・英名・別名のどれかが含まれているか
+function matchesMenuText(cocktail: Cocktail, text: string): boolean {
+  const normalizedLine = normalizeMenuText(getMenuItemName(text));
+  if (!normalizedLine) return false;
+  return [cocktail.name, cocktail.englishName, ...cocktail.aliases]
+    .map(normalizeMenuText)
+    .some((name) => name.length > 0 && normalizedLine.includes(name));
+}
+
 export function findRecognizedMenuItem(
   cocktail: Cocktail,
   menuItems: RecognizedMenuItem[] | null,
 ): RecognizedMenuItem | undefined {
-  if (!menuItems) return undefined;
-
-  const names = [cocktail.name, cocktail.englishName, ...cocktail.aliases].map(
-    normalizeMenuText,
-  );
-
-  return menuItems.find(({ text }) => {
-    const normalizedLine = normalizeMenuText(getMenuItemName(text));
-    return names.some(
-      (name) =>
-        name.length > 0 &&
-        normalizedLine.length > 0 &&
-        normalizedLine.includes(name),
-    );
-  });
+  return menuItems?.find(({ text }) => matchesMenuText(cocktail, text));
 }
+
+export type RecommendationResult = {
+  recommendations: Recommendation[];
+  unregistered: string[];
+  source: "menu" | "all" | "fallback";
+};
 
 export function recommendCocktails(
   query: string,
   menuItems: RecognizedMenuItem[] | null,
-) {
-  const normalizedQuery = query.toLocaleLowerCase();
+): RecommendationResult {
   let candidates = cocktails;
   const unregistered: string[] = [];
-  let source: "menu" | "all" | "fallback" = "all";
+  let source: RecommendationResult["source"] = "all";
 
   if (menuItems) {
-    const matchedIds = new Set<string>();
-    candidates = [];
-    for (const item of menuItems) {
+    const matched = new Set<Cocktail>();
+    for (const { text } of menuItems) {
       const cocktail = cocktails.find((candidate) =>
-        findRecognizedMenuItem(candidate, [item]),
+        matchesMenuText(candidate, text),
       );
       if (cocktail) {
-        if (!matchedIds.has(cocktail.id)) {
-          candidates.push(cocktail);
-          matchedIds.add(cocktail.id);
-        }
+        matched.add(cocktail);
       } else {
-        const name = getMenuItemName(item.text);
+        const name = getMenuItemName(text);
         if (name && !unregistered.includes(name)) unregistered.push(name);
       }
     }
 
-    if (candidates.length > 0) {
+    if (matched.size > 0) {
+      candidates = [...matched];
       source = "menu";
     } else {
-      candidates = cocktails;
       source = "fallback";
     }
   }
@@ -443,7 +409,7 @@ export function recommendCocktails(
   const recommendations = candidates
     .map((cocktail, index) => ({
       cocktail,
-      score: scoreCocktail(normalizedQuery, cocktail),
+      score: scoreCocktail(cocktail, query),
       index,
     }))
     .sort(

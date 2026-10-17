@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
+import { SiteFooter, SiteHeader } from "~/components/site-chrome";
 import {
   cocktails,
   findRecognizedMenuItem,
-  rankCocktails,
+  scoreCocktail,
 } from "~/data/cocktails";
 import { loadFavorites, saveFavorites } from "~/lib/favorites";
 import {
@@ -52,19 +53,11 @@ export default function CocktailDetail() {
   if (!cocktail) {
     return (
       <main className="site-shell detail-shell">
-        <header className="topbar">
-          <Link className="brand" to="/" aria-label="SIP ホーム">
-            <span className="brand-mark" aria-hidden="true">
-              S
-            </span>
-            <span>
-              SIP<span className="brand-period">.</span>
-            </span>
-          </Link>
+        <SiteHeader showNote={false}>
           <Link className="topbar-link" to="/cocktails">
             一覧に戻る <span aria-hidden="true">↗</span>
           </Link>
-        </header>
+        </SiteHeader>
         <section className="detail-page page-message" role="alert">
           <h1>お酒が見つかりませんでした</h1>
           <Link className="text-link" to="/cocktails">
@@ -75,13 +68,16 @@ export default function CocktailDetail() {
     );
   }
 
-  const recommendation = rankCocktails(session?.query ?? "").find(
-    (item) => item.cocktail.id === cocktail.id,
-  );
+  const score = scoreCocktail(cocktail, session?.query ?? "");
   const selectedMenuItem = findRecognizedMenuItem(
     cocktail,
     session?.recognizedMenuItems ?? null,
   );
+  // メニュー写真上の位置（読み取れたときだけ印を付ける）
+  const markerPosition =
+    selectedMenuItem?.x != null && selectedMenuItem.y != null
+      ? { x: selectedMenuItem.x, y: selectedMenuItem.y }
+      : null;
   const selectedCocktailId = cocktail.id;
   const isFavorite = favorites.includes(selectedCocktailId);
 
@@ -103,20 +99,11 @@ export default function CocktailDetail() {
 
   return (
     <main className="site-shell detail-shell">
-      <header className="topbar">
-        <Link className="brand" to="/" aria-label="SIP ホーム">
-          <span className="brand-mark" aria-hidden="true">
-            S
-          </span>
-          <span>
-            SIP<span className="brand-period">.</span>
-          </span>
-        </Link>
-        <span className="topbar-note">あなたに合う一杯を見つけよう</span>
+      <SiteHeader>
         <Link className="topbar-link" to="/cocktails">
           一覧に戻る <span aria-hidden="true">↗</span>
         </Link>
-      </header>
+      </SiteHeader>
 
       <article className="detail-page">
         <div className="detail-breadcrumb">
@@ -139,35 +126,29 @@ export default function CocktailDetail() {
                 <img
                   src={session.menuImage}
                   alt={
-                    selectedMenuItem?.x !== null &&
-                    selectedMenuItem?.y !== null &&
-                    selectedMenuItem
+                    markerPosition
                       ? `メニュー写真。${cocktail.name}の位置をマークしています。`
                       : "アップロードしたメニュー写真"
                   }
                 />
-                {selectedMenuItem?.x !== null &&
-                  selectedMenuItem?.y !== null &&
-                  selectedMenuItem && (
-                    <span
-                      className="menu-selection-marker"
-                      style={{
-                        left: `${selectedMenuItem.x}%`,
-                        top: `${selectedMenuItem.y}%`,
-                      }}
-                    >
-                      <span className="marker-pulse" aria-hidden="true" />
-                      <span className="marker-label">{cocktail.name}</span>
-                    </span>
-                  )}
+                {markerPosition && (
+                  <span
+                    className="menu-selection-marker"
+                    style={{
+                      left: `${markerPosition.x}%`,
+                      top: `${markerPosition.y}%`,
+                    }}
+                  >
+                    <span className="marker-pulse" aria-hidden="true" />
+                    <span className="marker-label">{cocktail.name}</span>
+                  </span>
+                )}
               </div>
               <figcaption>
                 {session.menuImageName ?? "アップロードしたメニュー写真"}
                 <span>
-                  {selectedMenuItem?.x !== null &&
-                  selectedMenuItem?.y !== null &&
-                  selectedMenuItem
-                    ? " OCRで読み取った掲載位置をマークしています"
+                  {markerPosition
+                    ? " AI で読み取った掲載位置をマークしています"
                     : " この一杯の掲載位置を特定できませんでした"}
                 </span>
               </figcaption>
@@ -208,7 +189,7 @@ export default function CocktailDetail() {
             </div>
             <div className="detail-match">
               <strong>
-                {Math.round((recommendation?.score ?? 0) * 100)}
+                {Math.round(score * 100)}
                 <small>%</small>
               </strong>
               <span>あなたとの相性</span>
@@ -272,18 +253,7 @@ export default function CocktailDetail() {
         </section>
       </article>
 
-      <footer className="footer">
-        <Link className="brand footer-brand" to="/" aria-label="SIP ホーム">
-          <span className="brand-mark" aria-hidden="true">
-            S
-          </span>
-          <span>
-            SIP<span className="brand-period">.</span>
-          </span>
-        </Link>
-        <span>Find a drink that feels like you.</span>
-        <span className="footer-year">JPHACKS 2026</span>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

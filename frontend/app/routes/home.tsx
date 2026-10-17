@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import { SiteFooter, SiteHeader } from "~/components/site-chrome";
 import { type RecognizedMenuItem, recognizeMenuImage } from "~/lib/ocr";
 import { saveRecommendationSession } from "~/lib/recommendation-session";
 import type { Route } from "./+types/home";
@@ -49,6 +50,12 @@ export default function Home() {
     setImageFile(file);
   }
 
+  // 写真の選択・撮影のどちらでも使う。同じ写真を選び直せるよう、選択をリセットする
+  function handleFileInput(event: React.ChangeEvent<HTMLInputElement>) {
+    selectImage(event.currentTarget.files?.[0]);
+    event.currentTarget.value = "";
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
@@ -88,20 +95,11 @@ export default function Home() {
 
   return (
     <main className="site-shell">
-      <header className="topbar">
-        <a className="brand" href="/" aria-label="SIP ホーム">
-          <span className="brand-mark" aria-hidden="true">
-            S
-          </span>
-          <span>
-            SIP<span className="brand-period">.</span>
-          </span>
-        </a>
-        <span className="topbar-note">あなたに合う一杯を見つけよう</span>
+      <SiteHeader>
         <a className="topbar-link" href="#how-it-works">
           使い方 <span aria-hidden="true">↗</span>
         </a>
-      </header>
+      </SiteHeader>
 
       <section className="hero" aria-labelledby="hero-title">
         <div className="hero-copy">
@@ -216,10 +214,7 @@ export default function Home() {
               type="file"
               accept="image/*"
               disabled={isSubmitting}
-              onChange={(event) => {
-                selectImage(event.currentTarget.files?.[0]);
-                event.currentTarget.value = "";
-              }}
+              onChange={handleFileInput}
             />
             <input
               className="file-input"
@@ -228,10 +223,7 @@ export default function Home() {
               accept="image/*"
               capture="environment"
               disabled={isSubmitting}
-              onChange={(event) => {
-                selectImage(event.currentTarget.files?.[0]);
-                event.currentTarget.value = "";
-              }}
+              onChange={handleFileInput}
             />
             {imageUrl ? (
               <div className="image-preview">
@@ -369,18 +361,7 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="footer">
-        <a className="brand footer-brand" href="/" aria-label="SIP ホーム">
-          <span className="brand-mark" aria-hidden="true">
-            S
-          </span>
-          <span>
-            SIP<span className="brand-period">.</span>
-          </span>
-        </a>
-        <span>Find a drink that feels like you.</span>
-        <span className="footer-year">JPHACKS 2026</span>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }
