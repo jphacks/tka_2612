@@ -2,6 +2,9 @@
 
 元データ（data/cocktails_source.json）を変えたら実行し直して、一緒にコミットする。
 GEMINI_API_KEY が必要（backend/.env に書く）。
+
+名前と説明文が前回と同じお酒は、前回のベクトルを使い回し、Gemini には送らない。
+モデルや次元を変えたときは、data/cocktails.json を消してから実行して全件作り直す。
 """
 
 import json
@@ -16,13 +19,28 @@ BATCH_SIZE = 20
 WAIT_SECONDS = 60 * BATCH_SIZE / embedding.REQUESTS_PER_MINUTE + 1
 
 
+def _previous_vectors() -> dict[tuple[str, str], list[float]]:
+    """前回のベクトルを (名前, 説明文) ごとに引けるようにする"""
+    if not EMBEDDED_PATH.exists():
+        return {}
+    items = json.loads(EMBEDDED_PATH.read_text(encoding="utf-8"))
+    return {(i["name"], i["description"]): i["vector"] for i in items if "vector" in i}
+
+
 def main() -> None:
-    if not embedding.is_available():
+    items = json.loads(SOURCE_PATH.read_text(encoding="utf-8"))
+    previous = _previous_vectors()
+    for item in items:
+        if vector := previous.get((item["name"], item["description"])):
+            item["vector"] = vector
+    todo = [item for item in items if "vector" not in item]
+    print(f"{len(items)} 件中 {len(items) - len(todo)} 件は前回のベクトルを使う")
+
+    if todo and not embedding.is_available():
         raise SystemExit("GEMINI_API_KEY が設定されていません（backend/.env を確認）")
 
-    items = json.loads(SOURCE_PATH.read_text(encoding="utf-8"))
-    for start in range(0, len(items), BATCH_SIZE):
-        batch = items[start : start + BATCH_SIZE]
+    for start in range(0, len(todo), BATCH_SIZE):
+        batch = todo[start : start + BATCH_SIZE]
         vectors = embedding.embed_documents(
             [item["name"] for item in batch],
             [item["description"] for item in batch],
@@ -30,8 +48,8 @@ def main() -> None:
         for item, vector in zip(batch, vectors, strict=True):
             # ファイルを小さくするため、小数は6桁に丸める
             item["vector"] = [round(v, 6) for v in vector]
-        print(f"{start + len(batch)} / {len(items)} 件")
-        if start + BATCH_SIZE < len(items):
+        print(f"{start + len(batch)} / {len(todo)} 件をベクトル化")
+        if start + BATCH_SIZE < len(todo):
             time.sleep(WAIT_SECONDS)
 
     EMBEDDED_PATH.write_text(
