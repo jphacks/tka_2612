@@ -1131,7 +1131,324 @@ textarea:focus-visible,
   text-underline-offset: 3px;
 }
 
+.detail-page {
+  width: min(900px, calc(100% - 64px));
+  margin-inline: auto;
+  padding: 32px 0 72px;
+  animation: reveal 300ms ease both;
+}
+
+.detail-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+  color: #a49991;
+  font-size: 10px;
+}
+
+.detail-breadcrumb a {
+  color: #8e7666;
+  text-decoration: none;
+}
+
+.detail-breadcrumb .step-label {
+  margin-left: auto;
+}
+
+.detail-section-heading {
+  margin-bottom: 16px;
+}
+
+.detail-section-heading .eyebrow {
+  margin-bottom: 9px;
+}
+
+.detail-page .detail-section-heading h1 {
+  margin: 0;
+  color: var(--ink);
+  font-family: "Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-size: 23px;
+  font-weight: 500;
+}
+
+.detail-menu-figure {
+  margin: 0;
+}
+
+.detail-menu-photo {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #e8dfd6;
+  background: #f1ece6;
+}
+
+.detail-menu-photo img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.menu-selection-marker {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translate(-50%, -50%);
+}
+
+.marker-pulse {
+  position: relative;
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border: 3px solid white;
+  border-radius: 50%;
+  background: var(--rust);
+  box-shadow: 0 1px 8px rgb(51 42 39 / 35%);
+}
+
+.marker-pulse::after {
+  position: absolute;
+  inset: -7px;
+  border: 1px solid var(--rust);
+  border-radius: 50%;
+  content: "";
+}
+
+.marker-label {
+  padding: 7px 10px;
+  border-radius: 2px;
+  background: var(--rust);
+  box-shadow: 0 3px 10px rgb(51 42 39 / 18%);
+  color: white;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.detail-menu-figure figcaption {
+  margin-top: 8px;
+  color: #92867e;
+  font-size: 9px;
+}
+
+.detail-menu-figure figcaption span {
+  margin-left: 8px;
+  color: #b2a69d;
+}
+
+.detail-menu-empty {
+  display: flex;
+  min-height: 150px;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  border: 1px dashed #e3d8ce;
+  background: #fffdfa;
+}
+
+.detail-menu-empty .cocktail-art {
+  flex: 0 0 100px;
+}
+
+.detail-menu-empty strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.detail-menu-empty p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.detail-storage-error {
+  margin: 12px 0 0;
+  color: #a34b38;
+  font-size: 10px;
+}
+
+.detail-copy {
+  padding-top: 42px;
+}
+
+.detail-copy-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 25px;
+  border-bottom: 1px solid var(--line);
+}
+
+.detail-copy-heading .cocktail-english {
+  margin-bottom: 5px;
+}
+
+.detail-page .detail-copy-heading h2 {
+  margin: 0;
+  color: var(--ink);
+  font-family: "Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-size: 34px;
+  font-weight: 500;
+}
+
+.detail-copy-heading .cocktail-tags {
+  margin-top: 13px;
+}
+
+.detail-match {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  color: #a99a90;
+  font-size: 9px;
+}
+
+.detail-match strong {
+  color: var(--rust);
+  font-family: Georgia, serif;
+  font-size: 32px;
+  font-weight: 400;
+}
+
+.detail-match small {
+  margin-left: 2px;
+  font-size: 13px;
+}
+
+.detail-description-block {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(190px, 0.8fr);
+  gap: 46px;
+  padding: 31px 0 35px;
+  border-bottom: 1px solid var(--line);
+}
+
+.detail-description-block h3 {
+  margin: 0 0 13px;
+  color: #4b403a;
+  font-family: "Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.detail-description > p:last-child {
+  max-width: 570px;
+  margin: 0;
+  color: #756961;
+  font-size: 12px;
+  line-height: 2;
+}
+
+.detail-ingredients ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  color: #756961;
+  font-size: 11px;
+  list-style: none;
+}
+
+.detail-ingredients li::before {
+  margin-right: 8px;
+  color: #bd806b;
+  content: "—";
+}
+
+.favorite-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 26px;
+  padding: 18px 20px;
+  border: 1px solid #eadfd4;
+  background: #fffdfa;
+}
+
+.favorite-copy {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.favorite-star {
+  color: #b77b54;
+  font-size: 24px;
+}
+
+.favorite-copy strong {
+  color: #51453d;
+  font-size: 11px;
+}
+
+.favorite-copy p {
+  margin: 5px 0 0;
+  color: #a49991;
+  font-size: 9px;
+}
+
+.favorite-button {
+  display: inline-flex;
+  min-width: 132px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 14px;
+  border: 1px solid #cda58f;
+  border-radius: 2px;
+  background: transparent;
+  color: #875b45;
+  cursor: pointer;
+  font-size: 10px;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.favorite-button:hover,
+.favorite-button.is-favorite {
+  background: #a94f36;
+  color: white;
+}
+
+.favorite-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.detail-bottom-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.detail-page .detail-bottom-nav > span {
+  color: #a49991;
+  font-size: 9px;
+}
+
 @media (max-width: 760px) {
+  .detail-page {
+    width: min(100% - 40px, 560px);
+    padding-top: 22px;
+  }
+
+  .detail-copy {
+    padding-top: 31px;
+  }
+
+  .detail-description-block {
+    grid-template-columns: 1fr;
+    gap: 27px;
+  }
+
   .topbar,
   .hero,
   .recommend-section,
@@ -1224,6 +1541,42 @@ textarea:focus-visible,
 }
 
 @media (max-width: 480px) {
+  .detail-page {
+    width: calc(100% - 32px);
+  }
+
+  .detail-page .detail-section-heading h1 {
+    font-size: 20px;
+  }
+
+  .detail-match strong {
+    font-size: 25px;
+  }
+
+  .detail-menu-empty {
+    gap: 13px;
+    padding: 14px;
+  }
+
+  .marker-label {
+    padding: 6px 8px;
+    font-size: 9px;
+  }
+
+  .favorite-panel {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .favorite-button {
+    width: 100%;
+  }
+
+  .detail-bottom-nav {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .topbar,
   .hero,
   .recommend-section,
@@ -1262,6 +1615,10 @@ textarea:focus-visible,
     font-size: 21px;
   }
 
+  .detail-page .detail-copy-heading h2 {
+    font-size: 27px;
+  }
+
   .search-card {
     padding-inline: 17px;
   }
@@ -1289,6 +1646,12 @@ textarea:focus-visible,
   .cocktail-art {
     width: 70px;
     height: 82px;
+  }
+
+  .detail-menu-empty .cocktail-art {
+    width: 74px;
+    height: 74px;
+    flex-basis: 74px;
   }
 
   .cocktail-description {
