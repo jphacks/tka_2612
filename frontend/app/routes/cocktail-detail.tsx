@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
-import { cocktails, rankCocktails } from "~/data/cocktails";
+import {
+  cocktails,
+  findRecognizedMenuItem,
+  rankCocktails,
+} from "~/data/cocktails";
 import { loadFavorites, saveFavorites } from "~/lib/favorites";
 import {
   loadRecommendationSession,
@@ -74,6 +78,10 @@ export default function CocktailDetail() {
   const recommendation = rankCocktails(session?.query ?? "").find(
     (item) => item.cocktail.id === cocktail.id,
   );
+  const selectedMenuItem = findRecognizedMenuItem(
+    cocktail,
+    session?.recognizedMenuItems ?? null,
+  );
   const selectedCocktailId = cocktail.id;
   const isFavorite = favorites.includes(selectedCocktailId);
 
@@ -130,22 +138,38 @@ export default function CocktailDetail() {
               <div className="detail-menu-photo">
                 <img
                   src={session.menuImage}
-                  alt={`メニュー写真。${cocktail.name}をマークしています。`}
+                  alt={
+                    selectedMenuItem?.x !== null &&
+                    selectedMenuItem?.y !== null &&
+                    selectedMenuItem
+                      ? `メニュー写真。${cocktail.name}の位置をマークしています。`
+                      : "アップロードしたメニュー写真"
+                  }
                 />
-                <span
-                  className="menu-selection-marker"
-                  style={{
-                    left: `${cocktail.menuPosition.x}%`,
-                    top: `${cocktail.menuPosition.y}%`,
-                  }}
-                >
-                  <span className="marker-pulse" aria-hidden="true" />
-                  <span className="marker-label">{cocktail.name}</span>
-                </span>
+                {selectedMenuItem?.x !== null &&
+                  selectedMenuItem?.y !== null &&
+                  selectedMenuItem && (
+                    <span
+                      className="menu-selection-marker"
+                      style={{
+                        left: `${selectedMenuItem.x}%`,
+                        top: `${selectedMenuItem.y}%`,
+                      }}
+                    >
+                      <span className="marker-pulse" aria-hidden="true" />
+                      <span className="marker-label">{cocktail.name}</span>
+                    </span>
+                  )}
               </div>
               <figcaption>
                 {session.menuImageName ?? "アップロードしたメニュー写真"}
-                <span> マーク位置は画面確認用のサンプルです</span>
+                <span>
+                  {selectedMenuItem?.x !== null &&
+                  selectedMenuItem?.y !== null &&
+                  selectedMenuItem
+                    ? " OCRで読み取った掲載位置をマークしています"
+                    : " この一杯の掲載位置を特定できませんでした"}
+                </span>
               </figcaption>
             </figure>
           ) : (

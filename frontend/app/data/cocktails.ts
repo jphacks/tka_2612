@@ -1,3 +1,5 @@
+import type { RecognizedMenuItem } from "~/lib/ocr";
+
 export type Cocktail = {
   id: string;
   name: string;
@@ -333,18 +335,6 @@ export const cocktails: Cocktail[] = [
   },
 ];
 
-const sampleMenuLines = [
-  "モヒート ¥900",
-  "カシスオレンジ ¥700",
-  "ジントニック ¥800",
-  "カルーアミルク ¥700",
-  "スプモーニ ¥800",
-  "ファジーネーブル ¥700",
-  "マティーニ ¥1,000",
-  "季節のフルーツサワー ¥750",
-  "店長おすすめハイボール ¥650",
-];
-
 function stableJitter(text: string): number {
   let hash = 0;
   for (const character of text) {
@@ -380,24 +370,73 @@ export function rankCocktails(query: string): Recommendation[] {
     .map(({ cocktail, score }) => ({ cocktail, score }));
 }
 
-export function recommendCocktails(query: string, hasMenuImage: boolean) {
+function normalizeMenuText(text: string): string {
+  return text
+    .normalize("NFKC")
+    .toLocaleLowerCase()
+    .replace(/[\s\p{P}\p{S}]/gu, "");
+}
+
+function getMenuItemName(text: string): string {
+  return text
+    .normalize("NFKC")
+    .replace(/(?:¥\s*[\d,]+|\s+[\d,]+\s*円?)\s*$/u, "")
+    .trim();
+}
+
+export function findRecognizedMenuItem(
+  cocktail: Cocktail,
+  menuItems: RecognizedMenuItem[] | null,
+): RecognizedMenuItem | undefined {
+  if (!menuItems) return undefined;
+
+  const names = [cocktail.name, cocktail.englishName, ...cocktail.aliases].map(
+    normalizeMenuText,
+  );
+
+  return menuItems.find(({ text }) => {
+    const normalizedLine = normalizeMenuText(getMenuItemName(text));
+    return names.some(
+      (name) =>
+        name.length > 0 &&
+        normalizedLine.length > 0 &&
+        normalizedLine.includes(name),
+    );
+  });
+}
+
+export function recommendCocktails(
+  query: string,
+  menuItems: RecognizedMenuItem[] | null,
+) {
   const normalizedQuery = query.toLocaleLowerCase();
   let candidates = cocktails;
   const unregistered: string[] = [];
+  let source: "menu" | "all" | "fallback" = "all";
 
-  if (hasMenuImage) {
+  if (menuItems) {
+    const matchedIds = new Set<string>();
     candidates = [];
-    for (const line of sampleMenuLines) {
-      const name = line.replace(/[¥￥]\s?[\d,]+/g, "").trim();
-      const cocktail = cocktails.find(
-        (item) =>
-          item.name.toLocaleLowerCase() === name.toLocaleLowerCase() ||
-          item.aliases.some(
-            (alias) => alias.toLocaleLowerCase() === name.toLocaleLowerCase(),
-          ),
+    for (const item of menuItems) {
+      const cocktail = cocktails.find((candidate) =>
+        findRecognizedMenuItem(candidate, [item]),
       );
-      if (cocktail) candidates.push(cocktail);
-      else unregistered.push(name);
+      if (cocktail) {
+        if (!matchedIds.has(cocktail.id)) {
+          candidates.push(cocktail);
+          matchedIds.add(cocktail.id);
+        }
+      } else {
+        const name = getMenuItemName(item.text);
+        if (name && !unregistered.includes(name)) unregistered.push(name);
+      }
+    }
+
+    if (candidates.length > 0) {
+      source = "menu";
+    } else {
+      candidates = cocktails;
+      source = "fallback";
     }
   }
 
@@ -417,6 +456,6 @@ export function recommendCocktails(query: string, hasMenuImage: boolean) {
   return {
     recommendations,
     unregistered,
-    source: hasMenuImage ? ("menu" as const) : ("all" as const),
+    source,
   };
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import { type RecognizedMenuItem, recognizeMenuImage } from "~/lib/ocr";
 import { saveRecommendationSession } from "~/lib/recommendation-session";
 import type { Route } from "./+types/home";
 
@@ -23,6 +24,7 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [ocrProgress, setOcrProgress] = useState("");
 
   useEffect(() => {
     if (!imageFile) {
@@ -38,6 +40,7 @@ export default function Home() {
 
   function selectImage(file: File | undefined) {
     setImageError("");
+    setOcrProgress("");
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       setImageError("画像ファイルを選択してください。");
@@ -51,7 +54,39 @@ export default function Home() {
     setIsSubmitting(true);
     setSubmitError("");
     try {
-      await saveRecommendationSession(preference.trim(), imageFile);
+      let recognizedMenuItems: RecognizedMenuItem[] | null = null;
+      let ocrError: string | null = null;
+
+      if (imageFile) {
+        try {
+          recognizedMenuItems = await recognizeMenuImage(
+            imageFile,
+            ({ status, progress }) => {
+              if (status === "loading language traineddata") {
+                setOcrProgress("日本語の認識データを準備しています…");
+              } else if (status === "recognizing text") {
+                setOcrProgress(
+                  `メニューを読み取り中… ${Math.round(progress * 100)}%`,
+                );
+              } else {
+                setOcrProgress("OCRエンジンを準備しています…");
+              }
+            },
+          );
+        } catch (error) {
+          ocrError =
+            error instanceof Error
+              ? error.message
+              : "メニュー画像の文字認識に失敗しました。";
+        }
+      }
+
+      await saveRecommendationSession(
+        preference.trim(),
+        imageFile,
+        recognizedMenuItems,
+        ocrError,
+      );
       navigate("/cocktails");
     } catch {
       setSubmitError(
@@ -151,6 +186,7 @@ export default function Home() {
               id="preference"
               name="preference"
               value={preference}
+              disabled={isSubmitting}
               onChange={(event) => {
                 setPreference(event.target.value);
               }}
@@ -168,6 +204,7 @@ export default function Home() {
                       setPreference(suggestion);
                     }}
                     type="button"
+                    disabled={isSubmitting}
                   >
                     + {suggestion}
                   </button>
@@ -189,6 +226,7 @@ export default function Home() {
               id="menu-photo"
               type="file"
               accept="image/*"
+              disabled={isSubmitting}
               onChange={(event) => {
                 selectImage(event.currentTarget.files?.[0]);
                 event.currentTarget.value = "";
@@ -200,6 +238,7 @@ export default function Home() {
               type="file"
               accept="image/*"
               capture="environment"
+              disabled={isSubmitting}
               onChange={(event) => {
                 selectImage(event.currentTarget.files?.[0]);
                 event.currentTarget.value = "";
@@ -224,6 +263,7 @@ export default function Home() {
                   }}
                   type="button"
                   aria-label="選択した写真を削除"
+                  disabled={isSubmitting}
                 >
                   ×
                 </button>
@@ -276,8 +316,16 @@ export default function Home() {
             )}
             <p className="privacy-note">
               <span aria-hidden="true">◈</span>{" "}
-              写真はおすすめのためだけに使用します
+              写真は端末内で認識し、外部には送信しません
             </p>
+            <p className="ocr-model-note">
+              初回のOCRには認識データ取得のためインターネット接続が必要です
+            </p>
+            {ocrProgress && (
+              <p className="ocr-progress" aria-live="polite">
+                {ocrProgress}
+              </p>
+            )}
           </div>
 
           <button

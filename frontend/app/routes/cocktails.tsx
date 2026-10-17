@@ -36,7 +36,7 @@ export default function Cocktails() {
 
   const result = recommendCocktails(
     session?.query ?? "",
-    Boolean(session?.menuImage),
+    session?.recognizedMenuItems ?? null,
   );
 
   return (
@@ -100,12 +100,16 @@ export default function Cocktails() {
               </span>
               <p>
                 {session.menuImage
-                  ? "サンプルOCR結果のメニュー掲載酒から、気分に合う順に表示しています。"
+                  ? result.source === "menu"
+                    ? "写真から認識したメニュー掲載酒を、気分に合う順に表示しています。"
+                    : "メニュー内のカクテルを特定できなかったため、全カタログから表示しています。"
                   : "メニュー画像がないため、全カタログからおすすめを表示しています。"}
                 <span>
                   {session.menuImage
-                    ? "実際の画像OCRは未接続のため、デモ用の読み取り結果を使用しています。"
-                    : "画面確認用のサンプルカタログです。"}
+                    ? session.ocrError
+                      ? `OCRに失敗しました: ${session.ocrError}`
+                      : "画像は端末内で日本語・英語のOCR処理を行いました。"
+                    : "写真を追加すると、画像内のメニューを読み取って候補を絞り込みます。"}
                 </span>
               </p>
             </div>
@@ -165,7 +169,7 @@ export default function Cocktails() {
               <div className="unregistered">
                 <h2>読み取れたが未登録のお酒</h2>
                 <p>{result.unregistered.join("、")}</p>
-                <span>デモ用のサンプルOCR結果から抽出しました。</span>
+                <span>写真から読み取ったメニューに含まれています。</span>
               </div>
             )}
           </>
