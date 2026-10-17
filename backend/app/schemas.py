@@ -38,14 +38,6 @@ class MenuMatchResponse(BaseModel):
     unregistered: list[str] = Field(description="データベースにないお酒の名前")
 
 
-class MenuScanResponse(BaseModel):
-    """メニューの写真から読み取った結果"""
-
-    names: list[str] = Field(
-        description="メニューに載っているお酒の名前（載っている順、重複なし）"
-    )
-
-
 class RecommendRequest(BaseModel):
     """おすすめのリクエスト"""
 

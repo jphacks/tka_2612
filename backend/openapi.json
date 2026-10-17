@@ -77,57 +77,6 @@
         }
       }
     },
-    "/menu/scan": {
-      "post": {
-        "tags": [
-          "menu"
-        ],
-        "summary": "Scan Menu",
-        "description": "メニューの写真から、載っているお酒の名前を AI（Gemini）で読み取る\n\n読み取った名前は、そのまま `/menu/match` に渡すとデータベースのお酒と照合できる。",
-        "operationId": "scan_menu",
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_scan_menu"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MenuScanResponse"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "画像が大きすぎる（10MB まで）"
-          },
-          "415": {
-            "description": "画像ではないファイル"
-          },
-          "503": {
-            "description": "Gemini が使えない（API キー未設定・回数制限など）"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/menu/match": {
       "post": {
         "tags": [
@@ -412,21 +361,6 @@
   },
   "components": {
     "schemas": {
-      "Body_scan_menu": {
-        "properties": {
-          "image": {
-            "type": "string",
-            "contentMediaType": "application/octet-stream",
-            "title": "Image",
-            "description": "メニューの写真（JPEG・PNG など）"
-          }
-        },
-        "type": "object",
-        "required": [
-          "image"
-        ],
-        "title": "Body_scan_menu"
-      },
       "Cocktail": {
         "properties": {
           "id": {
@@ -618,24 +552,6 @@
         ],
         "title": "MenuMatchResponse",
         "description": "照合の結果"
-      },
-      "MenuScanResponse": {
-        "properties": {
-          "names": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Names",
-            "description": "メニューに載っているお酒の名前（載っている順、重複なし）"
-          }
-        },
-        "type": "object",
-        "required": [
-          "names"
-        ],
-        "title": "MenuScanResponse",
-        "description": "メニューの写真から読み取った結果"
       },
       "RecommendRequest": {
         "properties": {

@@ -4,7 +4,7 @@ FastAPI で作ったバックエンド。Python と依存ライブラリは uv �
 
 ## Gemini の API キー
 
-写真の読み取りなどで Gemini API を使う。Google AI Studio（https://aistudio.google.com/apikey）でキーを発行し、
+おすすめ（入力文のベクトル化）で Gemini API を使う。Google AI Studio（https://aistudio.google.com/apikey）でキーを発行し、
 `backend/.env` に書く（`.env` はコミットしない）。`make dev` で自動的に読み込まれる。
 
 ```sh
@@ -30,7 +30,6 @@ make dev
 | --- | --- | --- |
 | GET | `/cocktails` | お酒の一覧 |
 | GET | `/cocktails/{cocktail_id}` | お酒の詳細 |
-| POST | `/menu/scan` | メニューの写真から、お酒の名前を AI（Gemini）で読み取る |
 | POST | `/menu/match` | メニューのお酒の名前を、データベースのお酒と照合する |
 | POST | `/recommendations` | 入力文（味・気分）に合うお酒を上位5件返す。候補をメニュー内に絞れる |
 | POST | `/favorites` | お気に入りに登録する（お気に入りの総数を返す） |
@@ -51,11 +50,6 @@ make dev
 一覧にない日本のバー・居酒屋の定番（レモンサワー、カシスウーロンなど）24件を加えたもの。
 材料は各記事を参考にし、説明文（味・香り、度数の目安、合う場面・気分）は独自に書いた（Wikipedia の文章は使っていない）。
 
-### メニューの写真の読み取り
-
-`POST /menu/scan` は、写真を Gemini（`gemini-3.8-flash`）に渡し、載っているお酒の名前だけを一覧で返させる。
-返ってきた名前を `POST /menu/match` に渡すと、データベースのお酒と照合できる。
-
 ### メニューの名前の照合
 
 `POST /menu/match` は、名前と別名の表記ゆれ（中黒・長音・全角半角・大文字小文字・価格・括弧の補足）をそろえて完全一致を探し、
@@ -67,7 +61,7 @@ make dev
 コサイン類似度の高い順に5件返す。`cocktail_ids` に `/menu/match` で照合したお酒のIDを渡すと、メニュー内のお酒だけから選ぶ。
 同じ入力文のベクトルはメモリに保持して再利用する（無料枠の節約。サーバーを再起動すると消える）。
 
-写真を使う流れ: `/menu/scan`（写真 → 名前）→ `/menu/match`（名前 → お酒のID）→ `/recommendations`（ID と入力文 → おすすめ）
+写真を使う流れ: 写真からお酒の名前を読み取るのはフロントエンドで行う → `/menu/match`（名前 → お酒のID）→ `/recommendations`（ID と入力文 → おすすめ）
 
 ### お気に入り
 
