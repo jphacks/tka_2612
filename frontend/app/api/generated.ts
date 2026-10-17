@@ -6,7 +6,435 @@
  */
 import { API_BASE_URL } from "./config";
 
+export interface BodyScanMenu {
+  /** メニューの写真（JPEG・PNG など） */
+  image: Blob | File;
+}
+
+/**
+ * お酒の情報（ベクトルは API では返さない）
+ */
+export interface Cocktail {
+  /** お酒のID */
+  id: string;
+  /** お酒の名前（日本語） */
+  name: string;
+  /** 照合用の別名（英名・表記ゆれなど） */
+  aliases: string[];
+  /** 味・香り、度数の目安、合う場面・気分の説明文 */
+  description: string;
+  /** 材料 */
+  ingredients: string[];
+}
+
+export type ValidationErrorCtx = { [key: string]: unknown };
+
+export interface ValidationError {
+  loc: (string | number)[];
+  msg: string;
+  type: string;
+  input?: unknown;
+  ctx?: ValidationErrorCtx;
+}
+
+export interface HTTPValidationError {
+  detail?: ValidationError[];
+}
+
+/**
+ * データベースのお酒と一致した名前
+ */
+export interface MatchedCocktail {
+  /** メニューに書かれていた名前 */
+  name: string;
+  cocktail: Cocktail;
+}
+
+/**
+ * メニューに載っているお酒の名前
+ */
+export interface MenuMatchRequest {
+  /**
+   * メニューから読み取ったお酒の名前（価格などが付いていてもよい）
+   * @maxItems 200
+   */
+  names: string[];
+}
+
+/**
+ * 照合の結果
+ */
+export interface MenuMatchResponse {
+  /** データベースのお酒と一致したもの */
+  matched: MatchedCocktail[];
+  /** データベースにないお酒の名前 */
+  unregistered: string[];
+}
+
+/**
+ * メニューの写真から読み取った結果
+ */
+export interface MenuScanResponse {
+  /** メニューに載っているお酒の名前（載っている順、重複なし） */
+  names: string[];
+}
+
+/**
+ * おすすめのリクエスト
+ */
+export interface RecommendRequest {
+  /**
+   * 味の希望や、シーン・気分を表す文（例: 甘くてフルーティ、失恋を支えてくれるお酒）
+   * @minLength 1
+   * @maxLength 500
+   */
+  query: string;
+  /** 候補にするお酒のID（メニューの写真から照合したものなど）。省略するとデータベース全体から選ぶ */
+  cocktail_ids?: string[] | null;
+}
+
+/**
+ * おすすめ1件
+ */
+export interface Recommendation {
+  cocktail: Cocktail;
+  /** 一致度（入力文とお酒の説明文のコサイン類似度） */
+  score: number;
+}
+
+/**
+ * おすすめの結果
+ */
+export interface RecommendResponse {
+  /** 入力文 */
+  query: string;
+  /** 一致度の高い順のおすすめ（上位5件まで） */
+  recommendations: Recommendation[];
+}
+
 export type Health200 = { [key: string]: string };
+
+export type listCocktailsResponse200 = {
+  data: Cocktail[];
+  status: 200;
+};
+
+export type listCocktailsResponseSuccess = listCocktailsResponse200 & {
+  headers: Headers;
+};
+
+export type listCocktailsResponse = listCocktailsResponseSuccess;
+
+export const getListCocktailsUrl = () => {
+  return `${API_BASE_URL}/cocktails`;
+};
+
+/**
+ * 登録されているお酒の一覧
+ * @summary List Cocktails
+ */
+export const listCocktails = async (
+  options?: RequestInit,
+): Promise<listCocktailsResponse> => {
+  const res = await fetch(getListCocktailsUrl(), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listCocktailsResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as listCocktailsResponse;
+};
+
+export type getCocktailResponse200 = {
+  data: Cocktail;
+  status: 200;
+};
+
+export type getCocktailResponse404 = {
+  data: void;
+  status: 404;
+};
+
+export type getCocktailResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type getCocktailResponseSuccess = getCocktailResponse200 & {
+  headers: Headers;
+};
+export type getCocktailResponseError = (
+  | getCocktailResponse404
+  | getCocktailResponse422
+) & {
+  headers: Headers;
+};
+
+export type getCocktailResponse =
+  | getCocktailResponseSuccess
+  | getCocktailResponseError;
+
+export const getGetCocktailUrl = (cocktailId: string) => {
+  return `${API_BASE_URL}/cocktails/${cocktailId}`;
+};
+
+/**
+ * お酒の詳細
+ * @summary Get Cocktail
+ */
+export const getCocktail = async (
+  cocktailId: string,
+  options?: RequestInit,
+): Promise<getCocktailResponse> => {
+  const res = await fetch(getGetCocktailUrl(cocktailId), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getCocktailResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as getCocktailResponse;
+};
+
+export type scanMenuResponse200 = {
+  data: MenuScanResponse;
+  status: 200;
+};
+
+export type scanMenuResponse413 = {
+  data: void;
+  status: 413;
+};
+
+export type scanMenuResponse415 = {
+  data: void;
+  status: 415;
+};
+
+export type scanMenuResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type scanMenuResponse503 = {
+  data: void;
+  status: 503;
+};
+
+export type scanMenuResponseSuccess = scanMenuResponse200 & {
+  headers: Headers;
+};
+export type scanMenuResponseError = (
+  | scanMenuResponse413
+  | scanMenuResponse415
+  | scanMenuResponse422
+  | scanMenuResponse503
+) & {
+  headers: Headers;
+};
+
+export type scanMenuResponse = scanMenuResponseSuccess | scanMenuResponseError;
+
+export const getScanMenuUrl = () => {
+  return `${API_BASE_URL}/menu/scan`;
+};
+
+/**
+ * メニューの写真から、載っているお酒の名前を AI（Gemini）で読み取る
+ *
+ * 読み取った名前は、そのまま `/menu/match` に渡すとデータベースのお酒と照合できる。
+ * @summary Scan Menu
+ */
+export const scanMenu = async (
+  bodyScanMenu: BodyScanMenu,
+  options?: RequestInit,
+): Promise<scanMenuResponse> => {
+  const formData = new FormData();
+  formData.append(`image`, bodyScanMenu.image);
+
+  const res = await fetch(getScanMenuUrl(), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: scanMenuResponse["data"] = body ? JSON.parse(body) : {};
+  return { data, status: res.status, headers: res.headers } as scanMenuResponse;
+};
+
+export type matchMenuResponse200 = {
+  data: MenuMatchResponse;
+  status: 200;
+};
+
+export type matchMenuResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type matchMenuResponseSuccess = matchMenuResponse200 & {
+  headers: Headers;
+};
+export type matchMenuResponseError = matchMenuResponse422 & {
+  headers: Headers;
+};
+
+export type matchMenuResponse =
+  | matchMenuResponseSuccess
+  | matchMenuResponseError;
+
+export const getMatchMenuUrl = () => {
+  return `${API_BASE_URL}/menu/match`;
+};
+
+/**
+ * メニューに載っているお酒の名前を、データベースのお酒と照合する
+ *
+ * 同じお酒に何度も一致したときは、最初の1件だけを返す。
+ * @summary Match Menu
+ */
+export const matchMenu = async (
+  menuMatchRequest: MenuMatchRequest,
+  options?: RequestInit,
+): Promise<matchMenuResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  const res = await fetch(getMatchMenuUrl(), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(menuMatchRequest),
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: matchMenuResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as matchMenuResponse;
+};
+
+export type recommendResponse200 = {
+  data: RecommendResponse;
+  status: 200;
+};
+
+export type recommendResponse422 = {
+  data: void;
+  status: 422;
+};
+
+export type recommendResponse503 = {
+  data: void;
+  status: 503;
+};
+
+export type recommendResponseSuccess = recommendResponse200 & {
+  headers: Headers;
+};
+export type recommendResponseError = (
+  | recommendResponse422
+  | recommendResponse503
+) & {
+  headers: Headers;
+};
+
+export type recommendResponse =
+  | recommendResponseSuccess
+  | recommendResponseError;
+
+export const getRecommendUrl = () => {
+  return `${API_BASE_URL}/recommendations`;
+};
+
+/**
+ * 入力文（味の希望や気分）に合うお酒を、一致度の高い順に上位5件返す
+ *
+ * `cocktail_ids` を渡すと、その中からだけ選ぶ（メニューの写真から照合したお酒など）。
+ * 省略すると、データベース全体から選ぶ。一致度は入力文とお酒の説明文のコサイン類似度。
+ * @summary Recommend
+ */
+export const recommend = async (
+  recommendRequest: RecommendRequest,
+  options?: RequestInit,
+): Promise<recommendResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  const res = await fetch(getRecommendUrl(), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(recommendRequest),
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: recommendResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as recommendResponse;
+};
 
 export type healthResponse200 = {
   data: Health200;
