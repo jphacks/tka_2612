@@ -7,10 +7,11 @@ from unittest import mock
 from fastapi.testclient import TestClient
 from google.genai import errors
 
-from app import embedding, gemini
+from app import embedding, gemini, query_log
 from app.cocktail_db import COCKTAILS, VECTORS
 from app.main import app
 from app.schemas import RecommendRequest, RecommendResponse
+from tests.temp_db import use_temp_database
 
 # 偽のベクトルの角度の刻み（角度が半周を超えないよう、件数で割る）
 STEP = 1 / len(COCKTAILS)
@@ -22,6 +23,7 @@ class TestRecommendations(unittest.TestCase):
     """
 
     def setUp(self) -> None:
+        use_temp_database(self)
         self.client = TestClient(app)
         fake_vectors = {
             c.id: [math.cos(STEP * i), math.sin(STEP * i)]
@@ -101,6 +103,25 @@ class TestRecommendations(unittest.TestCase):
         )
         res = self.client.post("/recommendations", json={"query": "甘い"})
         self.assertEqual(res.status_code, 503)
+
+    def recorded(self) -> list[tuple[str, int]]:
+        return query_log.ranking(limit=100)
+
+    def test_query_recorded(self) -> None:
+        self.recommend("甘い")
+        self.recommend("甘い", ["mojito"])
+        self.recommend("甘い", [])
+        self.assertEqual(self.recorded(), [("甘い", 3)])
+
+    def test_query_not_recorded_on_error(self) -> None:
+        self.embed_query.side_effect = errors.ClientError(
+            429, {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED"}}
+        )
+        self.client.post("/recommendations", json={"query": "甘い"})
+        self.client.post(
+            "/recommendations", json={"query": "甘い", "cocktail_ids": ["unknown"]}
+        )
+        self.assertEqual(self.recorded(), [])
 
 
 class TestEmbedQueryCache(unittest.TestCase):

@@ -23,6 +23,14 @@ CREATE TABLE IF NOT EXISTS favorite_counts (
     cocktail_id TEXT PRIMARY KEY,
     count       INTEGER NOT NULL CHECK (count >= 0)
 );
+
+-- おすすめで使われた入力文（店舗向けの「よく求められた味」の集計に使う）。端末IDは持たない
+CREATE TABLE IF NOT EXISTS queries (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    query      TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS queries_created_at ON queries (created_at);
 """
 
 

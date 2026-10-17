@@ -102,6 +102,16 @@ export interface MenuMatchResponse {
 }
 
 /**
+ * よく求められた味（入力文）と回数
+ */
+export interface QueryCount {
+  /** 入力文（全角半角と空白の違いはそろえてある） */
+  query: string;
+  /** 入力された回数 */
+  count: number;
+}
+
+/**
  * おすすめのリクエスト
  */
 export interface RecommendRequest {
@@ -150,6 +160,19 @@ export type RemoveFavoriteParams = {
    * @maxLength 100
    */
   device_id: string;
+};
+
+export type ListPopularQueriesParams = {
+  /**
+   * 返す件数（最大100）
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /**
+   * 直近何日分を数えるか。省略するとすべての期間
+   */
+  days?: number | null;
 };
 
 export type Health200 = { [key: string]: string };
@@ -361,6 +384,7 @@ export const getRecommendUrl = () => {
  *
  * `cocktail_ids` を渡すと、その中からだけ選ぶ（メニューの写真から照合したお酒など）。
  * 省略すると、データベース全体から選ぶ。一致度は入力文とお酒の説明文のコサイン類似度。
+ * おすすめを返せたときは、入力文を店舗向けの集計のために記録する（誰が入力したかは記録しない）。
  * @summary Recommend
  */
 export const recommend = async (
@@ -658,6 +682,69 @@ export const listFavoriteCounts = async (
     status: res.status,
     headers: res.headers,
   } as listFavoriteCountsResponse;
+};
+
+export type listPopularQueriesResponse200 = {
+  data: QueryCount[];
+  status: 200;
+};
+
+export type listPopularQueriesResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type listPopularQueriesResponseSuccess =
+  listPopularQueriesResponse200 & {
+    headers: Headers;
+  };
+export type listPopularQueriesResponseError = listPopularQueriesResponse422 & {
+  headers: Headers;
+};
+
+export type listPopularQueriesResponse =
+  | listPopularQueriesResponseSuccess
+  | listPopularQueriesResponseError;
+
+export const getListPopularQueriesUrl = (params?: ListPopularQueriesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `${API_BASE_URL}/store/queries?${stringifiedParams}`
+    : `${API_BASE_URL}/store/queries`;
+};
+
+/**
+ * よく求められた味（おすすめで入力された文）を、回数の多い順に返す
+ *
+ * 店舗向けの集計。全角半角と空白の違いはそろえて数える。回数が同じなら最近入力された順。
+ * @summary List Popular Queries
+ */
+export const listPopularQueries = async (
+  params?: ListPopularQueriesParams,
+  options?: RequestInit,
+): Promise<listPopularQueriesResponse> => {
+  const res = await fetch(getListPopularQueriesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listPopularQueriesResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as listPopularQueriesResponse;
 };
 
 export type healthResponse200 = {

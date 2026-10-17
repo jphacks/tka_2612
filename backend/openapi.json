@@ -125,7 +125,7 @@
           "recommendations"
         ],
         "summary": "Recommend",
-        "description": "入力文（味の希望や気分）に合うお酒を、一致度の高い順に上位5件返す\n\n`cocktail_ids` を渡すと、その中からだけ選ぶ（メニューの写真から照合したお酒など）。\n省略すると、データベース全体から選ぶ。一致度は入力文とお酒の説明文のコサイン類似度。",
+        "description": "入力文（味の希望や気分）に合うお酒を、一致度の高い順に上位5件返す\n\n`cocktail_ids` を渡すと、その中からだけ選ぶ（メニューの写真から照合したお酒など）。\n省略すると、データベース全体から選ぶ。一致度は入力文とお酒の説明文のコサイン類似度。\nおすすめを返せたときは、入力文を店舗向けの集計のために記録する（誰が入力したかは記録しない）。",
         "operationId": "recommend",
         "requestBody": {
           "content": {
@@ -329,6 +329,78 @@
                   },
                   "type": "array",
                   "title": "Response List Favorite Counts"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/queries": {
+      "get": {
+        "tags": [
+          "store"
+        ],
+        "summary": "List Popular Queries",
+        "description": "よく求められた味（おすすめで入力された文）を、回数の多い順に返す\n\n店舗向けの集計。全角半角と空白の違いはそろえて数える。回数が同じなら最近入力された順。",
+        "operationId": "list_popular_queries",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "返す件数（最大100）",
+              "default": 20,
+              "title": "Limit"
+            },
+            "description": "返す件数（最大100）"
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 365,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "直近何日分を数えるか。省略するとすべての期間",
+              "title": "Days"
+            },
+            "description": "直近何日分を数えるか。省略するとすべての期間"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QueryCount"
+                  },
+                  "title": "Response List Popular Queries"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -552,6 +624,27 @@
         ],
         "title": "MenuMatchResponse",
         "description": "照合の結果"
+      },
+      "QueryCount": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query",
+            "description": "入力文（全角半角と空白の違いはそろえてある）"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "description": "入力された回数"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "count"
+        ],
+        "title": "QueryCount",
+        "description": "よく求められた味（入力文）と回数"
       },
       "RecommendRequest": {
         "properties": {

@@ -91,3 +91,10 @@ class FavoriteCount(BaseModel):
 
     cocktail: Cocktail
     favorite_count: int = Field(description="お気に入りの総数（全端末）")
+
+
+class QueryCount(BaseModel):
+    """よく求められた味（入力文）と回数"""
+
+    query: str = Field(description="入力文（全角半角と空白の違いはそろえてある）")
+    count: int = Field(description="入力された回数")
