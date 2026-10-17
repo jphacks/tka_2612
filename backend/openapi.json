@@ -77,6 +77,48 @@
         }
       }
     },
+    "/menu/match": {
+      "post": {
+        "tags": [
+          "menu"
+        ],
+        "summary": "Match Menu",
+        "description": "メニューに載っているお酒の名前を、データベースのお酒と照合する\n\n同じお酒に何度も一致したときは、最初の1件だけを返す。",
+        "operationId": "match_menu",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MenuMatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MenuMatchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -159,6 +201,71 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "MatchedCocktail": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "メニューに書かれていた名前"
+          },
+          "cocktail": {
+            "$ref": "#/components/schemas/Cocktail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "cocktail"
+        ],
+        "title": "MatchedCocktail",
+        "description": "データベースのお酒と一致した名前"
+      },
+      "MenuMatchRequest": {
+        "properties": {
+          "names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Names",
+            "description": "メニューから読み取ったお酒の名前（価格などが付いていてもよい）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "names"
+        ],
+        "title": "MenuMatchRequest",
+        "description": "メニューに載っているお酒の名前"
+      },
+      "MenuMatchResponse": {
+        "properties": {
+          "matched": {
+            "items": {
+              "$ref": "#/components/schemas/MatchedCocktail"
+            },
+            "type": "array",
+            "title": "Matched",
+            "description": "データベースのお酒と一致したもの"
+          },
+          "unregistered": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unregistered",
+            "description": "データベースにないお酒の名前"
+          }
+        },
+        "type": "object",
+        "required": [
+          "matched",
+          "unregistered"
+        ],
+        "title": "MenuMatchResponse",
+        "description": "照合の結果"
       },
       "ValidationError": {
         "properties": {
