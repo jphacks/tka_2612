@@ -9,7 +9,12 @@
     },
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
-  "forwardPorts": [5173],
+  "forwardPorts": [5173, 8000],
+  "postCreateCommand": "git config core.hooksPath .githooks",
+  "postStartCommand": {
+    "backend": "cd backend && uv sync",
+    "frontend": "cd frontend && npm ci"
+  },
   "containerEnv": {
     "UV_LINK_MODE": "copy"
   },
@@ -18,8 +23,7 @@
       "extensions": [
         "ms-python.python",
         "charliermarsh.ruff",
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode",
+        "biomejs.biome",
         "anthropic.claude-code"
       ]
     }

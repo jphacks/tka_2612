@@ -5,7 +5,8 @@ const sampleCocktails = [
   {
     name: "カシスオレンジ",
     englishName: "Cassis Orange",
-    description: "カシスの甘酸っぱさとオレンジの果実感。飲みやすく華やかな一杯。",
+    description:
+      "カシスの甘酸っぱさとオレンジの果実感。飲みやすく華やかな一杯。",
     tags: ["甘口", "フルーティー"],
     match: 96,
     color: "cassis",
@@ -28,12 +29,13 @@ const sampleCocktails = [
   },
 ];
 
-export function meta({}: Route.MetaArgs) {
+export function meta(_: Route.MetaArgs) {
   return [
     { title: "SIP — あなたに合う一杯を" },
     {
       name: "description",
-      content: "飲みたい気分や味の好みから、あなたにぴったりのカクテルを見つけます。",
+      content:
+        "飲みたい気分や味の好みから、あなたにぴったりのカクテルを見つけます。",
     },
   ];
 }
@@ -78,19 +80,33 @@ export default function Home() {
     <main className="site-shell">
       <header className="topbar">
         <a className="brand" href="/" aria-label="SIP ホーム">
-          <span className="brand-mark" aria-hidden="true">S</span>
-          <span>SIP<span className="brand-period">.</span></span>
+          <span className="brand-mark" aria-hidden="true">
+            S
+          </span>
+          <span>
+            SIP<span className="brand-period">.</span>
+          </span>
         </a>
         <span className="topbar-note">あなたに合う一杯を見つけよう</span>
-        <a className="topbar-link" href="#how-it-works">使い方 <span aria-hidden="true">↗</span></a>
+        <a className="topbar-link" href="#how-it-works">
+          使い方 <span aria-hidden="true">↗</span>
+        </a>
       </header>
 
       <section className="hero" aria-labelledby="hero-title">
         <div className="hero-copy">
-          <p className="eyebrow"><span className="eyebrow-line" />YOUR NEXT FAVORITE</p>
-          <h1 id="hero-title">今夜の気分に、<br />ぴったりの一杯を。</h1>
+          <p className="eyebrow">
+            <span className="eyebrow-line" />
+            YOUR NEXT FAVORITE
+          </p>
+          <h1 id="hero-title">
+            今夜の気分に、
+            <br />
+            ぴったりの一杯を。
+          </h1>
           <p className="hero-description">
-            味の好みや気分を教えてください。<br className="desktop-break" />
+            味の好みや気分を教えてください。
+            <br className="desktop-break" />
             メニューの写真から、あなたに合うカクテルを見つけます。
           </p>
           <div className="hero-aside" aria-hidden="true">
@@ -109,13 +125,21 @@ export default function Home() {
             <div className="glass-bowl">
               <div className="glass-drink" />
               <div className="glass-highlight" />
-              <div className="glass-citrus"><span /></div>
+              <div className="glass-citrus">
+                <span />
+              </div>
               <div className="glass-bubble bubble-one" />
               <div className="glass-bubble bubble-two" />
               <div className="glass-bubble bubble-three" />
             </div>
           </div>
-          <span className="art-label">A LITTLE<br />SOMETHING<br />FOR TONIGHT</span>
+          <span className="art-label">
+            A LITTLE
+            <br />
+            SOMETHING
+            <br />
+            FOR TONIGHT
+          </span>
         </div>
       </section>
 
@@ -125,7 +149,9 @@ export default function Home() {
             <p className="eyebrow section-eyebrow">LET’S FIND YOUR DRINK</p>
             <h2 id="form-title">どんな一杯をお探しですか？</h2>
           </div>
-          <span className="step-label"><span>01</span> / 02</span>
+          <span className="step-label">
+            <span>01</span> / 02
+          </span>
         </div>
 
         <form className="search-card" onSubmit={handleSubmit}>
@@ -147,21 +173,23 @@ export default function Home() {
               rows={3}
               required
             />
-            <div className="prompt-suggestions" aria-label="入力例">
-              {["甘くて飲みやすい", "さっぱり柑橘系", "雨上がりに合う一杯"].map((suggestion) => (
-                <button
-                  className="suggestion-chip"
-                  key={suggestion}
-                  onClick={() => {
-                    setPreference(suggestion);
-                    setShowResults(false);
-                  }}
-                  type="button"
-                >
-                  + {suggestion}
-                </button>
-              ))}
-            </div>
+            <fieldset className="prompt-suggestions" aria-label="入力例">
+              {["甘くて飲みやすい", "さっぱり柑橘系", "雨上がりに合う一杯"].map(
+                (suggestion) => (
+                  <button
+                    className="suggestion-chip"
+                    key={suggestion}
+                    onClick={() => {
+                      setPreference(suggestion);
+                      setShowResults(false);
+                    }}
+                    type="button"
+                  >
+                    + {suggestion}
+                  </button>
+                ),
+              )}
+            </fieldset>
           </div>
 
           <div className="form-divider" />
@@ -184,9 +212,14 @@ export default function Home() {
             />
             {imageUrl ? (
               <div className="image-preview">
-                <img src={imageUrl} alt={`選択したメニュー写真: ${imageFile?.name ?? ""}`} />
+                <img
+                  src={imageUrl}
+                  alt={`選択したメニュー写真: ${imageFile?.name ?? ""}`}
+                />
                 <div className="image-preview-info">
-                  <span className="image-check" aria-hidden="true">✓</span>
+                  <span className="image-check" aria-hidden="true">
+                    ✓
+                  </span>
                   <span className="image-name">{imageFile?.name}</span>
                 </div>
                 <button
@@ -217,7 +250,7 @@ export default function Home() {
                 }}
               >
                 <span className="upload-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v5h14v-5" />
                   </svg>
                 </span>
@@ -228,32 +261,52 @@ export default function Home() {
                 <span className="upload-format">JPG・PNG</span>
               </label>
             )}
-            {imageError && <p className="field-error" role="alert">{imageError}</p>}
-            <p className="privacy-note"><span aria-hidden="true">◈</span> 写真はおすすめのためだけに使用します</p>
+            {imageError && (
+              <p className="field-error" role="alert">
+                {imageError}
+              </p>
+            )}
+            <p className="privacy-note">
+              <span aria-hidden="true">◈</span>{" "}
+              写真はおすすめのためだけに使用します
+            </p>
           </div>
 
           <button className="submit-button" type="submit">
             <span>おすすめを見つける</span>
-            <span className="submit-arrow" aria-hidden="true">→</span>
+            <span className="submit-arrow" aria-hidden="true">
+              →
+            </span>
           </button>
-          <p className="demo-note">現在は画面確認用のサンプル結果を表示します</p>
+          <p className="demo-note">
+            現在は画面確認用のサンプル結果を表示します
+          </p>
         </form>
       </section>
 
       {showResults && (
-        <section className="results-section" aria-live="polite" aria-labelledby="results-title">
+        <section
+          className="results-section"
+          aria-live="polite"
+          aria-labelledby="results-title"
+        >
           <div className="results-heading">
             <div>
               <p className="eyebrow section-eyebrow">MADE FOR YOUR MOOD</p>
               <h2 id="results-title">今夜のおすすめ</h2>
-              <p className="results-description">「{preference.trim()}」に合わせたサンプルです。</p>
+              <p className="results-description">
+                「{preference.trim()}」に合わせたサンプルです。
+              </p>
             </div>
             <span className="mock-label">SAMPLE</span>
           </div>
           <div className="cocktail-list">
             {sampleCocktails.map((cocktail, index) => (
               <article className="cocktail-card" key={cocktail.name}>
-                <div className={`cocktail-art cocktail-art-${cocktail.color}`} aria-hidden="true">
+                <div
+                  className={`cocktail-art cocktail-art-${cocktail.color}`}
+                  aria-hidden="true"
+                >
                   <span className="cocktail-number">0{index + 1}</span>
                   <span className="mini-glass">
                     <span className="mini-drink" />
@@ -264,11 +317,16 @@ export default function Home() {
                   <h3>{cocktail.name}</h3>
                   <p className="cocktail-description">{cocktail.description}</p>
                   <div className="cocktail-tags">
-                    {cocktail.tags.map((tag) => <span key={tag}>{tag}</span>)}
+                    {cocktail.tags.map((tag) => (
+                      <span key={tag}>{tag}</span>
+                    ))}
                   </div>
                 </div>
                 <div className="match-score">
-                  <strong>{cocktail.match}<small>%</small></strong>
+                  <strong>
+                    {cocktail.match}
+                    <small>%</small>
+                  </strong>
                   <span>相性</span>
                 </div>
               </article>
@@ -283,25 +341,42 @@ export default function Home() {
         <div className="how-steps">
           <div className="how-step">
             <span className="how-step-number">01</span>
-            <div><h3>気分を伝える</h3><p>味の好みや、今の気分を入力。</p></div>
+            <div>
+              <h3>気分を伝える</h3>
+              <p>味の好みや、今の気分を入力。</p>
+            </div>
           </div>
-          <span className="how-arrow" aria-hidden="true">→</span>
+          <span className="how-arrow" aria-hidden="true">
+            →
+          </span>
           <div className="how-step">
             <span className="how-step-number">02</span>
-            <div><h3>メニューを見せる</h3><p>写真を添えると、もっと見つけやすく。</p></div>
+            <div>
+              <h3>メニューを見せる</h3>
+              <p>写真を添えると、もっと見つけやすく。</p>
+            </div>
           </div>
-          <span className="how-arrow" aria-hidden="true">→</span>
+          <span className="how-arrow" aria-hidden="true">
+            →
+          </span>
           <div className="how-step">
             <span className="how-step-number">03</span>
-            <div><h3>新しい一杯に出会う</h3><p>あなたに合うカクテルをご提案。</p></div>
+            <div>
+              <h3>新しい一杯に出会う</h3>
+              <p>あなたに合うカクテルをご提案。</p>
+            </div>
           </div>
         </div>
       </section>
 
       <footer className="footer">
         <a className="brand footer-brand" href="/" aria-label="SIP ホーム">
-          <span className="brand-mark" aria-hidden="true">S</span>
-          <span>SIP<span className="brand-period">.</span></span>
+          <span className="brand-mark" aria-hidden="true">
+            S
+          </span>
+          <span>
+            SIP<span className="brand-period">.</span>
+          </span>
         </a>
         <span>Find a drink that feels like you.</span>
         <span className="footer-year">JPHACKS 2026</span>

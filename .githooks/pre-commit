@@ -1,0 +1,5 @@
+#!/bin/sh
+# コミット前に make check を実行し、失敗したらコミットを止める
+set -e
+make -C backend check
+make -C frontend check

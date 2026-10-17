@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+  --font-sans:
+    "Inter", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji", sans-serif;
 }
 
 :root {
@@ -213,7 +215,12 @@ textarea:focus-visible,
   width: 365px;
   height: 330px;
   border-radius: 50%;
-  background: radial-gradient(ellipse, #ead9c8 0%, #f1e8dd 48%, transparent 72%);
+  background: radial-gradient(
+    ellipse,
+    #ead9c8 0%,
+    #f1e8dd 48%,
+    transparent 72%
+  );
 }
 
 .art-orbit {
@@ -259,7 +266,12 @@ textarea:focus-visible,
   border: 2px solid rgb(255 255 255 / 83%);
   border-top: 2px solid rgb(255 255 255 / 75%);
   border-radius: 16px 16px 69px 69px;
-  background: linear-gradient(135deg, rgb(255 255 255 / 35%), rgb(255 255 255 / 5%) 42%, rgb(255 255 255 / 22%));
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 35%),
+    rgb(255 255 255 / 5%) 42%,
+    rgb(255 255 255 / 22%)
+  );
   transform: perspective(230px) rotateX(-7deg);
 }
 
@@ -271,7 +283,17 @@ textarea:focus-visible,
   height: 125px;
   border-radius: 0 0 65px 65px;
   background: linear-gradient(110deg, #b95139, #d4784b 51%, #a94737);
-  clip-path: polygon(0 0, 100% 0, 100% 58%, 88% 78%, 73% 91%, 50% 100%, 27% 91%, 12% 78%, 0 58%);
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 58%,
+    88% 78%,
+    73% 91%,
+    50% 100%,
+    27% 91%,
+    12% 78%,
+    0 58%
+  );
 }
 
 .glass-highlight {
@@ -337,9 +359,22 @@ textarea:focus-visible,
   background: rgb(255 235 196 / 80%);
 }
 
-.bubble-one { right: 31px; bottom: 65px; }
-.bubble-two { right: 48px; bottom: 93px; width: 4px; height: 4px; }
-.bubble-three { right: 24px; bottom: 112px; width: 3px; height: 3px; }
+.bubble-one {
+  right: 31px;
+  bottom: 65px;
+}
+.bubble-two {
+  right: 48px;
+  bottom: 93px;
+  width: 4px;
+  height: 4px;
+}
+.bubble-three {
+  right: 24px;
+  bottom: 112px;
+  width: 3px;
+  height: 3px;
+}
 
 .art-label {
   position: absolute;
@@ -435,7 +470,9 @@ textarea:focus-visible,
   color: var(--ink);
   font-size: 12px;
   line-height: 1.8;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .form-field textarea::placeholder {
@@ -451,7 +488,10 @@ textarea:focus-visible,
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
-  margin-top: 12px;
+  min-width: 0;
+  margin: 12px 0 0;
+  padding: 0;
+  border: 0;
 }
 
 .suggestion-chip {
@@ -462,7 +502,9 @@ textarea:focus-visible,
   color: #82766e;
   cursor: pointer;
   font-size: 10px;
-  transition: border-color 160ms ease, color 160ms ease;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease;
 }
 
 .suggestion-chip:hover {
@@ -494,7 +536,9 @@ textarea:focus-visible,
   border-radius: 3px;
   background: #fcfaf7;
   cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
 }
 
 .upload-area:hover {
@@ -644,7 +688,9 @@ textarea:focus-visible,
   font-size: 13px;
   font-weight: 550;
   letter-spacing: 0.08em;
-  transition: background 160ms ease, transform 160ms ease;
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
 }
 
 .submit-button:hover {
@@ -676,8 +722,14 @@ textarea:focus-visible,
 }
 
 @keyframes reveal {
-  from { opacity: 0; transform: translateY(9px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .results-heading {
@@ -730,8 +782,12 @@ textarea:focus-visible,
   background: #f2dfd2;
 }
 
-.cocktail-art-peach { background: #f1e3d4; }
-.cocktail-art-blue { background: #dce5e2; }
+.cocktail-art-peach {
+  background: #f1e3d4;
+}
+.cocktail-art-blue {
+  background: #dce5e2;
+}
 
 .cocktail-number {
   position: absolute;
@@ -776,8 +832,12 @@ textarea:focus-visible,
   background: linear-gradient(90deg, #b94e45, #d27853);
 }
 
-.cocktail-art-peach .mini-drink { background: linear-gradient(90deg, #d58a5d, #edb375); }
-.cocktail-art-blue .mini-drink { background: linear-gradient(90deg, #559895, #92c1b6); }
+.cocktail-art-peach .mini-drink {
+  background: linear-gradient(90deg, #d58a5d, #edb375);
+}
+.cocktail-art-blue .mini-drink {
+  background: linear-gradient(90deg, #559895, #92c1b6);
+}
 
 .cocktail-info {
   min-width: 0;

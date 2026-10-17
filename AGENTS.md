@@ -13,6 +13,15 @@
 - Python の実行は必ず uv 経由で行う（例: `uv run python script.py`, `uv run pytest`）
 - `python` / `pip` / `python -m venv` を直接使わない
 
+## チェック
+
+- コードを変更したら、変更したディレクトリで `make check` を実行し、すべて通してから作業完了とする
+  - `backend/`: ruff（リント・フォーマット）と ty（型）
+  - `frontend/`: Biome（リント・フォーマット）と tsc（型）
+- コミット時も pre-commit フック（`.githooks/pre-commit`）で両方の `make check` が走る。失敗したら直してからコミットする
+- `git commit --no-verify` でフックを飛ばさない
+- `# noqa` / `# type: ignore` / `biome-ignore` の追加や、ルールを緩める設定変更でエラーを黙らせない。必要な場合は理由を添えてユーザに確認する
+
 ## 依存ライブラリ
 
 - ライブラリを勝手に追加しない（`uv add` / `npm install <pkg>` など）
