@@ -4,11 +4,11 @@ import {
   listCocktailVectors,
   searchCocktails,
 } from "../api/generated";
-import { type BaseName, estimateBase } from "./bases";
+import { type BaseGroupName, baseGroupOf } from "./bases";
 
-// 地図に描くお酒（API のお酒に、推定したベース酒とベクトルを付けたもの）
+// 地図に描くお酒（API のお酒に、色分けのグループとベクトルを付けたもの）
 export type CocktailPoint = Cocktail & {
-  base: BaseName;
+  baseGroup: BaseGroupName;
   // 説明文の埋め込みベクトル（高次元）
   vector: number[];
 };
@@ -27,7 +27,7 @@ export async function fetchCocktailPoints(): Promise<CocktailPoint[]> {
   const vectors = new Map(vectorsRes.data.map((v) => [v.id, v.vector]));
   return cocktailsRes.data.flatMap((c) => {
     const vector = vectors.get(c.id);
-    return vector ? [{ ...c, base: estimateBase(c.ingredients), vector }] : [];
+    return vector ? [{ ...c, baseGroup: baseGroupOf(c.bases), vector }] : [];
   });
 }
 

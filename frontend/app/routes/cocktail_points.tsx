@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { BASES } from "../cocktails/bases";
+import { BASE_GROUPS, baseLabel } from "../cocktails/bases";
 import { CocktailCloud, type FocusRequest } from "../cocktails/CocktailCloud";
 import type { Layout } from "../cocktails/cloudScene";
 import {
@@ -190,7 +190,7 @@ export default function CocktailPoints() {
       <header className="pointer-events-none absolute inset-x-4 top-4">
         <h1 className="text-sm font-semibold">カクテル探索</h1>
         <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-400">
-          {BASES.map((b) => (
+          {BASE_GROUPS.map((b) => (
             <li key={b.name} className="flex items-center gap-1">
               <span
                 className="size-1.5 rounded-full"
@@ -274,7 +274,9 @@ type DetailCardProps = {
 };
 
 function DetailCard({ cocktail, score, onClose }: DetailCardProps) {
-  const baseColor = BASES.find((b) => b.name === cocktail.base)?.color;
+  const baseColor = BASE_GROUPS.find(
+    (g) => g.name === cocktail.baseGroup,
+  )?.color;
 
   return (
     <section className="rounded-2xl border border-white/10 bg-slate-900/85 p-4 shadow-lg backdrop-blur">
@@ -286,7 +288,7 @@ function DetailCard({ cocktail, score, onClose }: DetailCardProps) {
               className="size-1.5 rounded-full"
               style={{ backgroundColor: baseColor }}
             />
-            {cocktail.base}
+            {baseLabel(cocktail.bases)}
             {score !== null && (
               <span className="ml-1 text-sky-300">
                 一致度 {Math.round(score * 100)}%

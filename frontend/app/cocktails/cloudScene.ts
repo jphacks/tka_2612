@@ -1,8 +1,8 @@
-import { BASES } from "./bases";
+import { BASE_GROUPS } from "./bases";
 import type { Vec2 } from "./types";
 
 // 点として描くのに必要なお酒の情報
-export type PointInfo = { id: string; name: string; base: string };
+export type PointInfo = { id: string; name: string; baseGroup: string };
 
 // 関連度がないとき（検索していないとき）の濃さ・大きさ
 const IDLE_RELEVANCE = 0.55;
@@ -70,7 +70,7 @@ export function createCloudScene(
   container.appendChild(canvas);
 
   const baseColors = new Map<string, string>(
-    BASES.map((b) => [b.name, b.color]),
+    BASE_GROUPS.map((g) => [g.name, g.color]),
   );
 
   // 表示中の点
@@ -385,7 +385,7 @@ export function createCloudScene(
       cocktails = layout.cocktails;
       xs = layout.positions.map((p) => p[0]);
       ys = layout.positions.map((p) => p[1]);
-      colors = cocktails.map((c) => baseColors.get(c.base) ?? "#ffffff");
+      colors = cocktails.map((c) => baseColors.get(c.baseGroup) ?? "#ffffff");
       relevance =
         layout.relevance ??
         new Float32Array(cocktails.length).fill(IDLE_RELEVANCE);
