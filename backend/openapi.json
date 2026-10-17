@@ -77,6 +77,51 @@
         }
       }
     },
+    "/cocktails/search": {
+      "post": {
+        "tags": [
+          "cocktails"
+        ],
+        "summary": "Search Cocktails",
+        "description": "入力文をベクトル化し、ベクトルが近い順（一致度の高い順）にお酒を100件返す\n\n一致度は入力文とお酒の説明文のコサイン類似度。データベース全体から探す。",
+        "operationId": "search_cocktails",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Gemini が使えない（API キー未設定・回数制限など）"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/menu/match": {
       "post": {
         "tags": [
@@ -721,6 +766,66 @@
         ],
         "title": "Recommendation",
         "description": "おすすめ1件"
+      },
+      "SearchRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text",
+            "description": "検索する文（味・香り・気分・シーンなど、自由な文章）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "SearchRequest",
+        "description": "お酒の検索のリクエスト"
+      },
+      "SearchResponse": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "検索した文"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SimilarCocktail"
+            },
+            "type": "array",
+            "title": "Results",
+            "description": "ベクトルが近い順（一致度の高い順）のお酒（100件）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "results"
+        ],
+        "title": "SearchResponse",
+        "description": "お酒の検索の結果"
+      },
+      "SimilarCocktail": {
+        "properties": {
+          "cocktail": {
+            "$ref": "#/components/schemas/Cocktail"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "description": "一致度（入力文とお酒の説明文のコサイン類似度）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cocktail",
+          "score"
+        ],
+        "title": "SimilarCocktail",
+        "description": "検索結果の1件"
       },
       "ValidationError": {
         "properties": {
