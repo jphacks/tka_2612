@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from app import menu_matching
 from app.main import app
+from app.schemas import MenuMatchResponse
 
 
 class TestNormalize(unittest.TestCase):
@@ -55,33 +56,31 @@ class TestMenuMatchApi(unittest.TestCase):
     def setUp(self) -> None:
         self.client = TestClient(app)
 
-    def post(self, names: list[str]) -> dict:
+    def post(self, names: list[str]) -> MenuMatchResponse:
         res = self.client.post("/menu/match", json={"names": names})
         self.assertEqual(res.status_code, 200)
-        return res.json()
+        return MenuMatchResponse.model_validate_json(res.text)
 
     def test_matched_and_unregistered(self) -> None:
         body = self.post(
             ["カシスオレンジ ¥700", "モスコミュール", "店長おすすめサワー"]
         )
         self.assertEqual(
-            [(m["name"], m["cocktail"]["id"]) for m in body["matched"]],
+            [(m.name, m.cocktail.id) for m in body.matched],
             [
                 ("カシスオレンジ ¥700", "cassis-and-orange"),
                 ("モスコミュール", "moscow-mule"),
             ],
         )
-        self.assertEqual(body["unregistered"], ["店長おすすめサワー"])
+        self.assertEqual(body.unregistered, ["店長おすすめサワー"])
 
     def test_same_cocktail_once(self) -> None:
         body = self.post(["カシスオレンジ", "カシオレ"])
-        self.assertEqual(
-            [m["cocktail"]["id"] for m in body["matched"]], ["cassis-and-orange"]
-        )
+        self.assertEqual([m.cocktail.id for m in body.matched], ["cassis-and-orange"])
 
     def test_blank_names_skipped(self) -> None:
         body = self.post(["", "  "])
-        self.assertEqual(body, {"matched": [], "unregistered": []})
+        self.assertEqual(body, MenuMatchResponse(matched=[], unregistered=[]))
 
     def test_too_many_names(self) -> None:
         res = self.client.post("/menu/match", json={"names": ["モヒート"] * 201})
