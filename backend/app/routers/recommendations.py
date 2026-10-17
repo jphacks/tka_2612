@@ -1,13 +1,10 @@
-import logging
-
 from fastapi import APIRouter, HTTPException
 
-from app import embedding, gemini
-from app.cocktail_db import COCKTAILS, COCKTAILS_BY_ID, VECTORS
+from app import query_log, similarity
+from app.cocktail_db import COCKTAILS, COCKTAILS_BY_ID
 from app.schemas import Recommendation, RecommendRequest, RecommendResponse
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
-logger = logging.getLogger(__name__)
 
 TOP_N = 5
 
@@ -24,6 +21,7 @@ def recommend(req: RecommendRequest) -> RecommendResponse:
 
     `cocktail_ids` を渡すと、その中からだけ選ぶ（メニューの写真から照合したお酒など）。
     省略すると、データベース全体から選ぶ。一致度は入力文とお酒の説明文のコサイン類似度。
+    おすすめを返せたときは、入力文を店舗向けの集計のために記録する（誰が入力したかは記録しない）。
     """
     if req.cocktail_ids is None:
         candidates = COCKTAILS
@@ -35,29 +33,9 @@ def recommend(req: RecommendRequest) -> RecommendResponse:
             )
         candidates = [COCKTAILS_BY_ID[i] for i in dict.fromkeys(req.cocktail_ids)]
 
-    if not candidates:
-        return RecommendResponse(query=req.query, recommendations=[])
-    if not gemini.is_available():
-        raise HTTPException(status_code=503, detail="おすすめは現在使えません")
-
-    try:
-        query_vector = embedding.embed_query(req.query)
-    except gemini.GeminiError as e:
-        logger.warning("入力文のベクトル化に失敗しました: %s", e)
-        raise HTTPException(
-            status_code=503,
-            detail="ただいま混み合っています。少し待ってからもう一度お試しください",
-        ) from e
-
-    ranked = sorted(
-        (
-            Recommendation(
-                cocktail=c,
-                score=embedding.cosine_similarity(query_vector, VECTORS[c.id]),
-            )
-            for c in candidates
-        ),
-        key=lambda r: r.score,
-        reverse=True,
+    ranked = similarity.nearest(req.query, candidates, TOP_N)
+    query_log.record(req.query)
+    return RecommendResponse(
+        query=req.query,
+        recommendations=[Recommendation(cocktail=c, score=s) for c, s in ranked],
     )
-    return RecommendResponse(query=req.query, recommendations=ranked[:TOP_N])

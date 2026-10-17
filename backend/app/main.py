@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
-from app.routers import cocktails, favorites, menu, recommendations
+from app.routers import cocktails, favorites, menu, recommendations, store
 
 
 def generate_unique_id(route: APIRoute) -> str:
@@ -14,6 +14,7 @@ app.include_router(cocktails.router)
 app.include_router(menu.router)
 app.include_router(recommendations.router)
 app.include_router(favorites.router)
+app.include_router(store.router)
 
 
 @app.get("/health")

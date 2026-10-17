@@ -91,3 +91,36 @@ class FavoriteCount(BaseModel):
 
     cocktail: Cocktail
     favorite_count: int = Field(description="お気に入りの総数（全端末）")
+
+
+class QueryCount(BaseModel):
+    """よく求められた味（入力文）と回数"""
+
+    query: str = Field(description="入力文（全角半角と空白の違いはそろえてある）")
+    count: int = Field(description="入力された回数")
+
+
+class SearchRequest(BaseModel):
+    """お酒の検索のリクエスト"""
+
+    text: str = Field(
+        min_length=1,
+        max_length=500,
+        description="検索する文（味・香り・気分・シーンなど、自由な文章）",
+    )
+
+
+class SimilarCocktail(BaseModel):
+    """検索結果の1件"""
+
+    cocktail: Cocktail
+    score: float = Field(description="一致度（入力文とお酒の説明文のコサイン類似度）")
+
+
+class SearchResponse(BaseModel):
+    """お酒の検索の結果"""
+
+    text: str = Field(description="検索した文")
+    results: list[SimilarCocktail] = Field(
+        description="ベクトルが近い順（一致度の高い順）のお酒（100件）"
+    )
