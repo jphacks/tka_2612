@@ -1,266 +1,227 @@
-import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { BASES } from "./mock";
 import type { Cocktail } from "./types";
 
 // 検索していないときの関連度（全点を中くらいの濃さで表示する）
 const IDLE_RELEVANCE = 0.55;
-// カメラからこの距離以内の点に名前を表示する
-const LABEL_DISTANCE = 5;
-const MAX_LABELS = 10;
-// 検索結果に近づいたときの、点とカメラの距離
-const FOCUS_DISTANCE = 3;
-// クリックした点に視点を寄せるときの、点とカメラの最大距離
-const SELECT_DISTANCE = 8;
-// 下部の UI と重ならないよう、描画の中心を画面の高さに対してこの割合だけ上にずらす
-const VIEW_SHIFT_UP = 0.12;
-// 検索で最も一致した点の色。ベース酒の色と紛れないものにする
-const BEST_MATCH_COLOR = "#00ffa3";
-const FLIGHT_MS = 1400;
+// 全体表示のときの点の半径（px）
+const POINT_RADIUS = 2.5;
+const MAX_POINT_RADIUS = 18;
+// ズーム倍率は全体表示を 1 とする
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 40;
+// この倍率以上に近づくと名前を表示する
+const LABEL_ZOOM = 2.5;
+const MAX_LABELS = 14;
+// 検索結果に近づくときの倍率
+const FOCUS_ZOOM = 6;
+const FLIGHT_MS = 900;
 const PICK_RADIUS_PX = 12;
 const CLICK_MOVE_TOLERANCE_PX = 6;
-
-const vertexShader = /* glsl */ `
-  attribute vec3 aColor;
-  attribute float aRelevance;
-  attribute float aIndex;
-  uniform float uSize;
-  uniform float uViewportHeight;
-  uniform float uPixelRatio;
-  uniform float uSelected;
-  uniform float uBest;
-  uniform vec3 uBestColor;
-  varying vec3 vColor;
-  varying float vAlpha;
-  varying float vSelected;
-
-  void main() {
-    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    gl_Position = projectionMatrix * mvPosition;
-
-    float selected = step(abs(aIndex - uSelected), 0.5);
-    // 関連度が高い点ほど大きくする（二乗で上位の点を強調する）
-    float worldSize = uSize * (0.4 + 1.6 * aRelevance * aRelevance) * (1.0 + selected * 0.8);
-    float pixelSize = worldSize * projectionMatrix[1][1] * uViewportHeight * 0.5 / -mvPosition.z;
-    float minSize = mix(1.5, 14.0, selected) * uPixelRatio;
-    gl_PointSize = clamp(pixelSize, minSize, 72.0 * uPixelRatio);
-
-    float best = step(abs(aIndex - uBest), 0.5);
-    vColor = mix(aColor, uBestColor, best);
-    vAlpha = max(mix(0.04, 0.95, pow(aRelevance, 1.6)), selected);
-    vSelected = selected;
-  }
-`;
-
-const fragmentShader = /* glsl */ `
-  varying vec3 vColor;
-  varying float vAlpha;
-  varying float vSelected;
-
-  void main() {
-    float d = length(gl_PointCoord - 0.5);
-    if (d > 0.5) discard;
-    float shape = smoothstep(0.5, 0.15, d);
-    vec3 color = vColor;
-    if (vSelected > 0.5) {
-      float ring = smoothstep(0.5, 0.44, d) * smoothstep(0.3, 0.38, d);
-      color = mix(color, vec3(1.0), ring);
-      shape = max(shape, ring);
-    }
-    gl_FragColor = vec4(color, vAlpha * shape);
-    #include <colorspace_fragment>
-  }
-`;
+// 下部の UI と重ならないよう、表示の中心を画面の高さに対してこの割合だけ上にずらす
+const VIEW_SHIFT_UP = 0.12;
+// 全体表示で点群を収める、画面の高さに対する割合
+const FIT_HEIGHT = 0.7;
+// 下部の UI に隠れずに見える範囲（画面の高さに対する割合）
+const VISIBLE_BOTTOM = 0.6;
+// 検索で最も一致した点の色。ベース酒の色と紛れないものにする
+const BEST_MATCH_COLOR = "#00ffa3";
+const LABEL_FONT = "12px Inter, ui-sans-serif, system-ui, sans-serif";
+const PINNED_LABEL_FONT = `600 ${LABEL_FONT}`;
 
 export type CloudScene = {
   setRelevance(relevance: Float32Array | null): void;
   setSelected(id: number | null): void;
   setBestMatch(id: number | null): void;
-  // zoomIn が true なら点のすぐ手前まで近づき、false なら今の距離をなるべく保つ
+  // zoomIn が true なら点に近づき、false なら点が隠れているときだけ中心に移す
   flyTo(id: number, zoomIn: boolean): void;
   dispose(): void;
 };
 
-type Flight = {
-  fromPosition: THREE.Vector3;
-  toPosition: THREE.Vector3;
-  fromTarget: THREE.Vector3;
-  toTarget: THREE.Vector3;
-  startedAt: number;
-};
+// 表示の中心（データ座標）とズーム倍率
+type View = { x: number; y: number; zoom: number };
+
+type Flight = { from: View; to: View; startedAt: number };
+
+type Rect = { x: number; y: number; w: number; h: number };
 
 export function createCloudScene(
   container: HTMLElement,
-  labelLayer: HTMLElement,
   cocktails: Cocktail[],
   onPick: (id: number | null) => void,
 ): CloudScene {
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.domElement.style.display = "block";
-  container.appendChild(renderer.domElement);
-
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(55, 1, 0.05, 200);
-  camera.position.set(0, 3, 20);
-
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.autoRotate = true;
-  controls.autoRotateSpeed = 0.4;
-  controls.minDistance = 0.5;
-  controls.maxDistance = 60;
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas 2D を利用できません");
+  canvas.style.display = "block";
+  canvas.style.touchAction = "none";
+  canvas.style.cursor = "grab";
+  container.appendChild(canvas);
 
   const count = cocktails.length;
-  const positions = new Float32Array(count * 3);
-  const colors = new Float32Array(count * 3);
-  const indices = new Float32Array(count);
-  const currentRelevance = new Float32Array(count).fill(IDLE_RELEVANCE);
-  const targetRelevance = new Float32Array(count).fill(IDLE_RELEVANCE);
+  const xs = cocktails.map((c) => c.vector[0]);
+  const ys = cocktails.map((c) => c.vector[1]);
   const baseColors = new Map<string, string>(
     BASES.map((b) => [b.name, b.color]),
   );
-  const color = new THREE.Color();
-  cocktails.forEach((c, i) => {
-    positions.set(c.vector, i * 3);
-    color.set(baseColors.get(c.base) ?? "#ffffff");
-    colors.set([color.r, color.g, color.b], i * 3);
-    indices[i] = i;
-  });
+  const colors = cocktails.map((c) => baseColors.get(c.base) ?? "#ffffff");
+  const currentRelevance = new Float32Array(count).fill(IDLE_RELEVANCE);
+  const targetRelevance = new Float32Array(count).fill(IDLE_RELEVANCE);
+  // 関連度の低い点から描き、関連度の高い点を上に重ねる
+  let drawOrder = cocktails.map((_, i) => i);
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute("aColor", new THREE.BufferAttribute(colors, 3));
-  geometry.setAttribute("aIndex", new THREE.BufferAttribute(indices, 1));
-  const relevanceAttribute = new THREE.BufferAttribute(currentRelevance, 1);
-  relevanceAttribute.setUsage(THREE.DynamicDrawUsage);
-  geometry.setAttribute("aRelevance", relevanceAttribute);
-
-  const material = new THREE.ShaderMaterial({
-    uniforms: {
-      uSize: { value: 0.22 },
-      uViewportHeight: { value: 1 },
-      uPixelRatio: { value: renderer.getPixelRatio() },
-      uSelected: { value: -1 },
-      uBest: { value: -1 },
-      uBestColor: { value: new THREE.Color(BEST_MATCH_COLOR) },
-    },
-    vertexShader,
-    fragmentShader,
-    transparent: true,
-    depthWrite: false,
-  });
-  scene.add(new THREE.Points(geometry, material));
-
-  const labels = Array.from({ length: MAX_LABELS + 1 }, () => {
-    const el = document.createElement("div");
-    el.className =
-      "absolute left-0 top-0 whitespace-nowrap text-xs text-slate-100";
-    el.style.textShadow = "0 1px 3px rgb(0 0 0 / 0.9)";
-    el.style.display = "none";
-    labelLayer.appendChild(el);
-    return el;
-  });
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const spanX = Math.max(maxX - minX, 1);
+  const spanY = Math.max(maxY - minY, 1);
 
   let width = 1;
   let height = 1;
+  let dpr = 1;
+  // 全体表示のときの、データ座標 1 あたりのピクセル数
+  let fitScale = 1;
+  const view: View = {
+    x: (minX + maxX) / 2,
+    y: (minY + maxY) / 2,
+    zoom: 1,
+  };
   let selectedIndex = -1;
+  let bestIndex = -1;
   let hoveredIndex = -1;
   let relevanceAnimating = false;
   let flight: Flight | null = null;
+  let dirty = true;
+
+  const scale = () => fitScale * view.zoom;
+  const originY = () => height * (0.5 - VIEW_SHIFT_UP);
+  const screenX = (i: number) => (xs[i] - view.x) * scale() + width / 2;
+  const screenY = (i: number) => (ys[i] - view.y) * scale() + originY();
+  const isOnScreen = (sx: number, sy: number, margin: number) =>
+    sx >= -margin &&
+    sx <= width + margin &&
+    sy >= -margin &&
+    sy <= height + margin;
+
+  const pointRadius = (i: number) => {
+    const r = currentRelevance[i];
+    const radius =
+      POINT_RADIUS * (0.4 + 1.6 * r * r) * Math.sqrt(Math.max(view.zoom, 1));
+    return Math.min(
+      i === selectedIndex ? Math.max(radius * 1.8, 6) : radius,
+      MAX_POINT_RADIUS,
+    );
+  };
 
   const resize = () => {
     width = Math.max(container.clientWidth, 1);
     height = Math.max(container.clientHeight, 1);
-    renderer.setSize(width, height);
-    camera.aspect = width / height;
-    camera.setViewOffset(
-      width,
-      height,
-      0,
-      height * VIEW_SHIFT_UP,
-      width,
-      height,
-    );
-    material.uniforms.uViewportHeight.value = height * renderer.getPixelRatio();
+    dpr = Math.min(window.devicePixelRatio, 2);
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    fitScale = Math.min((width * 0.9) / spanX, (height * FIT_HEIGHT) / spanY);
+    dirty = true;
   };
   resize();
   const resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(container);
 
-  const projected = new THREE.Vector3();
-  // 点 i をスクリーン座標に投影する。カメラの後ろや画面外なら null
-  const toScreen = (i: number): { x: number; y: number } | null => {
-    projected.fromArray(positions, i * 3).project(camera);
-    if (projected.z < -1 || projected.z > 1) return null;
-    if (Math.abs(projected.x) > 1.1 || Math.abs(projected.y) > 1.1) {
-      return null;
+  const drawPoint = (i: number) => {
+    const sx = screenX(i);
+    const sy = screenY(i);
+    const radius = pointRadius(i);
+    if (!isOnScreen(sx, sy, radius + 4)) return;
+    const r = currentRelevance[i];
+    const isSelected = i === selectedIndex;
+    ctx.globalAlpha = isSelected ? 1 : 0.04 + 0.91 * r ** 1.6;
+    ctx.fillStyle = i === bestIndex ? BEST_MATCH_COLOR : colors[i];
+    ctx.beginPath();
+    ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    if (isSelected) {
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(sx, sy, radius + 3, 0, Math.PI * 2);
+      ctx.stroke();
     }
-    return {
-      x: ((projected.x + 1) / 2) * width,
-      y: ((1 - projected.y) / 2) * height,
-    };
   };
 
-  const point = new THREE.Vector3();
-  const updateLabels = () => {
-    const candidates: { i: number; distance: number; x: number; y: number }[] =
-      [];
-    for (let i = 0; i < count; i++) {
-      const distance = point
-        .fromArray(positions, i * 3)
-        .distanceTo(camera.position);
-      const pinned = i === selectedIndex || i === hoveredIndex;
-      if (distance > LABEL_DISTANCE && !pinned) continue;
-      const screen = toScreen(i);
-      if (screen) candidates.push({ i, distance, ...screen });
-    }
-    // 選択中・ホバー中の点は常に表示し、残りはカメラに近い順に表示する
-    const priority = (i: number) =>
-      i === selectedIndex ? 0 : i === hoveredIndex ? 1 : 2;
-    candidates.sort(
-      (a, b) => priority(a.i) - priority(b.i) || a.distance - b.distance,
-    );
+  const overlaps = (a: Rect, b: Rect) =>
+    a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
-    labels.forEach((el, k) => {
-      const c = candidates[k];
-      if (!c) {
-        el.style.display = "none";
-        return;
+  // 選択中・ホバー中の点は常に、近づいたときは関連度の高い点から重ならないように名前を出す
+  const drawLabels = () => {
+    const pinned = [selectedIndex, hoveredIndex].filter(
+      (i, k, arr) => i >= 0 && arr.indexOf(i) === k,
+    );
+    const others: number[] = [];
+    if (view.zoom >= LABEL_ZOOM) {
+      const cx = width / 2;
+      const cy = originY();
+      for (let i = 0; i < count; i++) {
+        if (pinned.includes(i)) continue;
+        if (isOnScreen(screenX(i), screenY(i), 0)) others.push(i);
       }
-      const name = cocktails[c.i].name;
-      if (el.textContent !== name) el.textContent = name;
-      const isPinned = c.i === selectedIndex || c.i === hoveredIndex;
-      const fade =
-        1 -
-        THREE.MathUtils.smoothstep(
-          c.distance,
-          LABEL_DISTANCE * 0.6,
-          LABEL_DISTANCE,
-        );
-      const opacity = isPinned
+      const centerDistance = (i: number) =>
+        (screenX(i) - cx) ** 2 + (screenY(i) - cy) ** 2;
+      others.sort(
+        (a, b) =>
+          currentRelevance[b] - currentRelevance[a] ||
+          centerDistance(a) - centerDistance(b),
+      );
+    }
+
+    const fadeIn = Math.min(1, view.zoom - LABEL_ZOOM + 0.3);
+    const placed: Rect[] = [];
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "rgb(0 0 0 / 0.9)";
+    ctx.shadowBlur = 3;
+    ctx.shadowOffsetY = 1;
+    for (const i of [...pinned, ...others.slice(0, 200)]) {
+      if (placed.length >= MAX_LABELS + pinned.length) break;
+      const isPinned = pinned.includes(i);
+      ctx.font = isPinned ? PINNED_LABEL_FONT : LABEL_FONT;
+      const name = cocktails[i].name;
+      const rect: Rect = {
+        x: screenX(i) + pointRadius(i) + 6,
+        y: screenY(i) - 9,
+        w: ctx.measureText(name).width,
+        h: 18,
+      };
+      if (!isPinned && placed.some((p) => overlaps(p, rect))) continue;
+      placed.push(rect);
+      ctx.globalAlpha = isPinned
         ? 1
-        : fade * (0.25 + 0.75 * currentRelevance[c.i]);
-      el.style.display = "block";
-      el.style.opacity = opacity.toFixed(2);
-      el.style.zIndex = isPinned ? "1" : "0";
-      el.style.fontWeight = isPinned ? "600" : "400";
-      el.style.transform = `translate(${c.x + 10}px, ${c.y}px) translateY(-50%)`;
-    });
+        : fadeIn * (0.35 + 0.65 * currentRelevance[i]);
+      ctx.fillStyle = "#f1f5f9";
+      ctx.fillText(name, rect.x, rect.y + rect.h / 2);
+    }
+    ctx.shadowColor = "transparent";
+  };
+
+  const render = () => {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+    for (const i of drawOrder) {
+      if (i !== selectedIndex && i !== bestIndex) drawPoint(i);
+    }
+    if (bestIndex >= 0 && bestIndex !== selectedIndex) drawPoint(bestIndex);
+    if (selectedIndex >= 0) drawPoint(selectedIndex);
+    drawLabels();
+    ctx.globalAlpha = 1;
   };
 
   // 画面上でポインタに最も近い点を選ぶ
-  const pickAt = (clientX: number, clientY: number): number | null => {
-    const rect = renderer.domElement.getBoundingClientRect();
-    const px = clientX - rect.left;
-    const py = clientY - rect.top;
+  const pickAt = (px: number, py: number): number | null => {
     let best: number | null = null;
-    let bestDistance = PICK_RADIUS_PX ** 2;
+    let bestDistance = Number.POSITIVE_INFINITY;
     for (let i = 0; i < count; i++) {
-      const screen = toScreen(i);
-      if (!screen) continue;
-      const d = (screen.x - px) ** 2 + (screen.y - py) ** 2;
-      if (d < bestDistance) {
+      const d = (screenX(i) - px) ** 2 + (screenY(i) - py) ** 2;
+      const reach = Math.max(PICK_RADIUS_PX, pointRadius(i) + 4);
+      if (d <= reach ** 2 && d < bestDistance) {
         bestDistance = d;
         best = i;
       }
@@ -268,43 +229,121 @@ export function createCloudScene(
     return best;
   };
 
-  let pointerDown: { x: number; y: number } | null = null;
-  const handlePointerDown = (e: PointerEvent) => {
-    pointerDown = { x: e.clientX, y: e.clientY };
+  // 画面上の (sx, sy) にあるデータ座標を動かさずに拡大・縮小する
+  const zoomAt = (sx: number, sy: number, factor: number) => {
+    const wx = view.x + (sx - width / 2) / scale();
+    const wy = view.y + (sy - originY()) / scale();
+    view.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, view.zoom * factor));
+    view.x = wx - (sx - width / 2) / scale();
+    view.y = wy - (sy - originY()) / scale();
+    dirty = true;
   };
-  const handlePointerUp = (e: PointerEvent) => {
-    if (!pointerDown) return;
-    const moved = Math.hypot(
-      e.clientX - pointerDown.x,
-      e.clientY - pointerDown.y,
-    );
-    pointerDown = null;
-    if (moved > CLICK_MOVE_TOLERANCE_PX) return;
-    const picked = pickAt(e.clientX, e.clientY);
-    onPick(picked === null ? null : cocktails[picked].id);
-  };
-  // マウスを乗せた点の名前を出し、クリックできることをカーソルで示す
-  const handlePointerMove = (e: PointerEvent) => {
-    if (pointerDown || e.pointerType !== "mouse") return;
-    hoveredIndex = pickAt(e.clientX, e.clientY) ?? -1;
-    renderer.domElement.style.cursor = hoveredIndex < 0 ? "grab" : "pointer";
-  };
-  const handlePointerLeave = () => {
-    hoveredIndex = -1;
-  };
-  renderer.domElement.addEventListener("pointerdown", handlePointerDown);
-  renderer.domElement.addEventListener("pointerup", handlePointerUp);
-  renderer.domElement.addEventListener("pointermove", handlePointerMove);
-  renderer.domElement.addEventListener("pointerleave", handlePointerLeave);
 
-  const stopAutoMotion = () => {
-    controls.autoRotate = false;
-    flight = null;
+  const localPoint = (e: PointerEvent | WheelEvent) => {
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
-  controls.addEventListener("start", stopAutoMotion);
+
+  // 押している指・マウスの現在位置
+  const pointers = new Map<number, { x: number; y: number }>();
+  let pressStart: { x: number; y: number } | null = null;
+  let moved = false;
+
+  const pinchState = () => {
+    const [a, b] = [...pointers.values()];
+    return {
+      distance: Math.hypot(a.x - b.x, a.y - b.y),
+      mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+    };
+  };
+
+  const handlePointerDown = (e: PointerEvent) => {
+    canvas.setPointerCapture(e.pointerId);
+    const p = localPoint(e);
+    pointers.set(e.pointerId, p);
+    flight = null;
+    if (pointers.size === 1) {
+      pressStart = p;
+      moved = false;
+      canvas.style.cursor = "grabbing";
+    } else {
+      moved = true;
+    }
+  };
+
+  const handlePointerMove = (e: PointerEvent) => {
+    const p = localPoint(e);
+    const prev = pointers.get(e.pointerId);
+    if (!prev) {
+      // マウスを乗せた点の名前を出し、クリックできることをカーソルで示す
+      if (e.pointerType !== "mouse") return;
+      const hovered = pickAt(p.x, p.y) ?? -1;
+      if (hovered !== hoveredIndex) {
+        hoveredIndex = hovered;
+        dirty = true;
+      }
+      canvas.style.cursor = hoveredIndex < 0 ? "grab" : "pointer";
+      return;
+    }
+
+    if (pointers.size === 2) {
+      const before = pinchState();
+      pointers.set(e.pointerId, p);
+      const after = pinchState();
+      view.x -= (after.mid.x - before.mid.x) / scale();
+      view.y -= (after.mid.y - before.mid.y) / scale();
+      if (before.distance > 0) {
+        zoomAt(after.mid.x, after.mid.y, after.distance / before.distance);
+      }
+    } else {
+      pointers.set(e.pointerId, p);
+      view.x -= (p.x - prev.x) / scale();
+      view.y -= (p.y - prev.y) / scale();
+      if (
+        pressStart &&
+        Math.hypot(p.x - pressStart.x, p.y - pressStart.y) >
+          CLICK_MOVE_TOLERANCE_PX
+      ) {
+        moved = true;
+      }
+    }
+    dirty = true;
+  };
+
+  const handlePointerUp = (e: PointerEvent) => {
+    if (!pointers.delete(e.pointerId)) return;
+    if (pointers.size > 0) return;
+    canvas.style.cursor = "grab";
+    if (!moved && e.type === "pointerup") {
+      const p = localPoint(e);
+      const picked = pickAt(p.x, p.y);
+      onPick(picked === null ? null : cocktails[picked].id);
+    }
+  };
+
+  const handlePointerLeave = () => {
+    if (hoveredIndex < 0) return;
+    hoveredIndex = -1;
+    dirty = true;
+  };
+
+  const handleWheel = (e: WheelEvent) => {
+    e.preventDefault();
+    flight = null;
+    const p = localPoint(e);
+    zoomAt(p.x, p.y, Math.exp(-e.deltaY * 0.002));
+  };
+
+  canvas.addEventListener("pointerdown", handlePointerDown);
+  canvas.addEventListener("pointermove", handlePointerMove);
+  canvas.addEventListener("pointerup", handlePointerUp);
+  canvas.addEventListener("pointercancel", handlePointerUp);
+  canvas.addEventListener("pointerleave", handlePointerLeave);
+  canvas.addEventListener("wheel", handleWheel, { passive: false });
 
   let lastFrameAt = performance.now();
-  renderer.setAnimationLoop((now: number) => {
+  let frame = 0;
+  const tick = (now: number) => {
     const dt = (now - lastFrameAt) / 1000;
     lastFrameAt = now;
 
@@ -320,82 +359,83 @@ export function createCloudScene(
         currentRelevance.set(targetRelevance);
         relevanceAnimating = false;
       }
-      relevanceAttribute.needsUpdate = true;
+      dirty = true;
     }
 
     if (flight) {
       const t = Math.min(1, (now - flight.startedAt) / FLIGHT_MS);
       const eased = t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2;
-      camera.position.lerpVectors(
-        flight.fromPosition,
-        flight.toPosition,
-        eased,
-      );
-      controls.target.lerpVectors(flight.fromTarget, flight.toTarget, eased);
+      const { from, to } = flight;
+      view.x = from.x + (to.x - from.x) * eased;
+      view.y = from.y + (to.y - from.y) * eased;
+      // 倍率は比率で補間すると拡大の速さが一定に見える
+      view.zoom = from.zoom * (to.zoom / from.zoom) ** eased;
       if (t === 1) flight = null;
+      dirty = true;
     }
 
-    controls.update(dt);
-    renderer.render(scene, camera);
-    updateLabels();
-  });
+    if (dirty) {
+      render();
+      dirty = false;
+    }
+    frame = requestAnimationFrame(tick);
+  };
+  frame = requestAnimationFrame(tick);
+
+  const indexOf = (id: number | null) =>
+    id === null ? -1 : cocktails.findIndex((c) => c.id === id);
 
   return {
     setRelevance(relevance) {
       if (relevance) targetRelevance.set(relevance);
       else targetRelevance.fill(IDLE_RELEVANCE);
+      drawOrder = cocktails
+        .map((_, i) => i)
+        .sort((a, b) => targetRelevance[a] - targetRelevance[b]);
       relevanceAnimating = true;
     },
     setSelected(id) {
-      selectedIndex =
-        id === null ? -1 : cocktails.findIndex((c) => c.id === id);
-      material.uniforms.uSelected.value = selectedIndex;
+      selectedIndex = indexOf(id);
+      dirty = true;
     },
     setBestMatch(id) {
-      material.uniforms.uBest.value =
-        id === null ? -1 : cocktails.findIndex((c) => c.id === id);
+      bestIndex = indexOf(id);
+      dirty = true;
     },
     flyTo(id, zoomIn) {
-      const index = cocktails.findIndex((c) => c.id === id);
+      const index = indexOf(id);
       if (index < 0) return;
-      const toTarget = new THREE.Vector3().fromArray(positions, index * 3);
-      // 今の見る向きを保ったまま、点を視点の中心に持ってくる
-      const direction = camera.position.clone().sub(controls.target);
-      if (direction.lengthSq() < 1e-6) direction.set(0, 0, 1);
-      direction.normalize();
-      const distance = zoomIn
-        ? FOCUS_DISTANCE
-        : THREE.MathUtils.clamp(
-            camera.position.distanceTo(toTarget),
-            FOCUS_DISTANCE,
-            SELECT_DISTANCE,
-          );
-      controls.autoRotate = false;
+      if (!zoomIn) {
+        const sx = screenX(index);
+        const sy = screenY(index);
+        const margin = 40;
+        const visible =
+          sx >= margin &&
+          sx <= width - margin &&
+          sy >= margin &&
+          sy <= height * VISIBLE_BOTTOM;
+        if (visible) return;
+      }
       flight = {
-        fromPosition: camera.position.clone(),
-        toPosition: toTarget.clone().addScaledVector(direction, distance),
-        fromTarget: controls.target.clone(),
-        toTarget,
+        from: { ...view },
+        to: {
+          x: xs[index],
+          y: ys[index],
+          zoom: zoomIn ? Math.max(view.zoom, FOCUS_ZOOM) : view.zoom,
+        },
         startedAt: performance.now(),
       };
     },
     dispose() {
-      renderer.setAnimationLoop(null);
+      cancelAnimationFrame(frame);
       resizeObserver.disconnect();
-      controls.removeEventListener("start", stopAutoMotion);
-      controls.dispose();
-      renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
-      renderer.domElement.removeEventListener("pointerup", handlePointerUp);
-      renderer.domElement.removeEventListener("pointermove", handlePointerMove);
-      renderer.domElement.removeEventListener(
-        "pointerleave",
-        handlePointerLeave,
-      );
-      geometry.dispose();
-      material.dispose();
-      renderer.dispose();
-      renderer.domElement.remove();
-      for (const el of labels) el.remove();
+      canvas.removeEventListener("pointerdown", handlePointerDown);
+      canvas.removeEventListener("pointermove", handlePointerMove);
+      canvas.removeEventListener("pointerup", handlePointerUp);
+      canvas.removeEventListener("pointercancel", handlePointerUp);
+      canvas.removeEventListener("pointerleave", handlePointerLeave);
+      canvas.removeEventListener("wheel", handleWheel);
+      canvas.remove();
     },
   };
 }

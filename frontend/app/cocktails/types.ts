@@ -1,4 +1,4 @@
-export type Vec3 = [number, number, number];
+export type Vec2 = [number, number];
 
 export type Cocktail = {
   id: number;
@@ -7,6 +7,6 @@ export type Cocktail = {
   abv: number;
   description: string;
   tags: string[];
-  // 高次元の特徴量ベクトルを3次元に圧縮した座標
-  vector: Vec3;
+  // 高次元の特徴量ベクトルを2次元に圧縮した座標
+  vector: Vec2;
 };

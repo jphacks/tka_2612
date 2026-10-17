@@ -1,4 +1,4 @@
-import type { Cocktail, Vec3 } from "./types";
+import type { Cocktail, Vec2 } from "./types";
 
 // バックエンドができるまでのモックデータ。
 // SSR とクライアントで同じデータになるよう、シード付き乱数で決定的に生成する
@@ -130,17 +130,11 @@ function generateMockCocktails(count: number, seed = 2612): Cocktail[] {
     return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand());
   };
 
-  // ベース酒ごとにクラスタの中心を球面上に散らし、点群に構造を持たせる
-  const centers: Vec3[] = BASES.map((_, i) => {
-    const y = 1 - (2 * (i + 0.5)) / BASES.length;
-    const r = Math.sqrt(1 - y * y);
-    const theta = i * Math.PI * (3 - Math.sqrt(5));
+  // ベース酒ごとにクラスタの中心を円周上に並べ、点群に構造を持たせる
+  const centers: Vec2[] = BASES.map((_, i) => {
+    const theta = (2 * Math.PI * i) / BASES.length;
     const radius = 7;
-    return [
-      Math.cos(theta) * r * radius,
-      y * radius,
-      Math.sin(theta) * r * radius,
-    ];
+    return [Math.cos(theta) * radius, Math.sin(theta) * radius];
   });
 
   const usedNames = new Set<string>();
@@ -167,7 +161,6 @@ function generateMockCocktails(count: number, seed = 2612): Cocktail[] {
       vector: [
         center[0] + gaussian() * spread,
         center[1] + gaussian() * spread,
-        center[2] + gaussian() * spread,
       ],
     });
   }

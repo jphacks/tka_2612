@@ -35,21 +35,19 @@ export function searchCocktails(
     .map((score, i) => ({ score, i }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 8);
-  const centroid = [0, 0, 0];
+  const centroid = [0, 0];
   let weightSum = 0;
   for (const { score, i } of top) {
-    for (let k = 0; k < 3; k++) centroid[k] += cocktails[i].vector[k] * score;
+    for (let k = 0; k < 2; k++) centroid[k] += cocktails[i].vector[k] * score;
     weightSum += score;
   }
-  for (let k = 0; k < 3; k++) centroid[k] /= weightSum;
+  for (let k = 0; k < 2; k++) centroid[k] /= weightSum;
 
   const sigma = 2.5;
   const relevance = new Float32Array(cocktails.length);
   cocktails.forEach((c, i) => {
     const d2 =
-      (c.vector[0] - centroid[0]) ** 2 +
-      (c.vector[1] - centroid[1]) ** 2 +
-      (c.vector[2] - centroid[2]) ** 2;
+      (c.vector[0] - centroid[0]) ** 2 + (c.vector[1] - centroid[1]) ** 2;
     const proximity = Math.exp(-d2 / (2 * sigma * sigma));
     relevance[i] = 0.7 * (textScores[i] / maxText) + 0.3 * proximity;
   });

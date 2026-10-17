@@ -10,7 +10,7 @@ export function meta(_: Route.MetaArgs) {
     { title: "カクテル探索" },
     {
       name: "description",
-      content: "好みの味やお酒の名前から、カクテルを3Dで探せます",
+      content: "好みの味やお酒の名前から、カクテルを地図のように探せます",
     },
   ];
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { type CloudScene, createCloudScene } from "./cloudScene";
 import type { Cocktail } from "./types";
 
@@ -24,10 +24,8 @@ export function CocktailCloud({
   onSelect,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const labelLayerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<CloudScene | null>(null);
   const onSelectRef = useRef(onSelect);
-  const [webglError, setWebglError] = useState(false);
 
   useEffect(() => {
     onSelectRef.current = onSelect;
@@ -35,18 +33,10 @@ export function CocktailCloud({
 
   useEffect(() => {
     const container = containerRef.current;
-    const labelLayer = labelLayerRef.current;
-    if (!container || !labelLayer) return;
-    let scene: CloudScene;
-    try {
-      scene = createCloudScene(container, labelLayer, cocktails, (id) =>
-        onSelectRef.current(id),
-      );
-    } catch (e) {
-      console.error(e);
-      setWebglError(true);
-      return;
-    }
+    if (!container) return;
+    const scene = createCloudScene(container, cocktails, (id) =>
+      onSelectRef.current(id),
+    );
     sceneRef.current = scene;
     return () => {
       scene.dispose();
@@ -71,18 +61,6 @@ export function CocktailCloud({
   }, [focus]);
 
   return (
-    // isolate: 名前タグの z-index をこの中だけで効かせ、上に重ねる UI より手前に出さない
-    <div className="absolute inset-0 isolate overflow-hidden">
-      <div ref={containerRef} className="absolute inset-0" />
-      <div
-        ref={labelLayerRef}
-        className="pointer-events-none absolute inset-0 overflow-hidden"
-      />
-      {webglError && (
-        <p className="absolute inset-0 flex items-center justify-center px-4 text-center text-sm text-slate-400">
-          お使いのブラウザでは3D表示（WebGL）を利用できません
-        </p>
-      )}
-    </div>
+    <div ref={containerRef} className="absolute inset-0 overflow-hidden" />
   );
 }
