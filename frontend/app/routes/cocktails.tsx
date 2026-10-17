@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { rankCocktails } from "~/data/cocktails";
+import { recommendCocktails } from "~/data/cocktails";
 import {
   loadRecommendationSession,
   type RecommendationSession,
@@ -34,7 +34,10 @@ export default function Cocktails() {
     }
   }, []);
 
-  const recommendations = rankCocktails(session?.query ?? "");
+  const result = recommendCocktails(
+    session?.query ?? "",
+    Boolean(session?.menuImage),
+  );
 
   return (
     <main className="site-shell">
@@ -97,9 +100,13 @@ export default function Cocktails() {
               </span>
               <p>
                 {session.menuImage
-                  ? "メニュー画像を受け取りました。現在OCRは未接続のため、全カタログからおすすめを表示しています。"
+                  ? "サンプルOCR結果のメニュー掲載酒から、気分に合う順に表示しています。"
                   : "メニュー画像がないため、全カタログからおすすめを表示しています。"}
-                <span>画面確認用のサンプルデータです。</span>
+                <span>
+                  {session.menuImage
+                    ? "実際の画像OCRは未接続のため、デモ用の読み取り結果を使用しています。"
+                    : "画面確認用のサンプルカタログです。"}
+                </span>
               </p>
             </div>
             {session.menuImage && (
@@ -114,7 +121,7 @@ export default function Cocktails() {
               </figure>
             )}
             <div className="cocktail-list">
-              {recommendations.map(({ cocktail, score }, index) => (
+              {result.recommendations.map(({ cocktail, score }, index) => (
                 <Link
                   className="cocktail-card cocktail-card-link"
                   key={cocktail.id}
@@ -143,7 +150,7 @@ export default function Cocktails() {
                   </div>
                   <div className="match-score">
                     <strong>
-                      {score}
+                      {Math.round(score * 100)}
                       <small>%</small>
                     </strong>
                     <span>相性</span>
@@ -154,6 +161,13 @@ export default function Cocktails() {
                 </Link>
               ))}
             </div>
+            {result.unregistered.length > 0 && (
+              <div className="unregistered">
+                <h2>読み取れたが未登録のお酒</h2>
+                <p>{result.unregistered.join("、")}</p>
+                <span>デモ用のサンプルOCR結果から抽出しました。</span>
+              </div>
+            )}
           </>
         )}
       </section>

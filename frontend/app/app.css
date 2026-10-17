@@ -1087,6 +1087,33 @@ textarea:focus-visible,
   line-height: 1.8;
 }
 
+.unregistered {
+  margin-top: 18px;
+  padding: 14px 18px;
+  border: 1px dashed #e7d6c7;
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.unregistered h2 {
+  margin: 0 0 6px;
+  color: #9e765e;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.unregistered p {
+  margin: 0;
+}
+
+.unregistered span {
+  display: block;
+  margin-top: 5px;
+  color: #a49991;
+  font-size: 9px;
+}
+
 .catalog-note p span {
   display: block;
   color: #a49991;

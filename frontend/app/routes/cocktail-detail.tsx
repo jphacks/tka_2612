@@ -184,7 +184,7 @@ export default function CocktailDetail() {
             </div>
             <div className="detail-match">
               <strong>
-                {recommendation?.score ?? 0}
+                {Math.round((recommendation?.score ?? 0) * 100)}
                 <small>%</small>
               </strong>
               <span>あなたとの相性</span>
