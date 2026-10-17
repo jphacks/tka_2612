@@ -10,6 +10,7 @@
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   "forwardPorts": [5173, 8000],
+  "postCreateCommand": "git config core.hooksPath .githooks",
   "containerEnv": {
     "UV_LINK_MODE": "copy"
   },
