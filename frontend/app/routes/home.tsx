@@ -25,7 +25,6 @@ export default function Home() {
   const [focus, setFocus] = useState<FocusRequest | null>(null);
 
   const focusOn = (id: number) => {
-    setSelectedId(id);
     setFocus((prev) => ({ id, key: (prev?.key ?? 0) + 1 }));
   };
 
@@ -34,6 +33,8 @@ export default function Home() {
     const next = searchCocktails(query, mockCocktails);
     setResult(next);
     setNotFound(next === null && query.trim() !== "");
+    // 説明はクリックしたときだけ出すので、検索では視点を近づけるだけにする
+    setSelectedId(null);
     if (next) focusOn(next.ranking[0]);
   };
 
@@ -122,7 +123,10 @@ export default function Home() {
             <button
               key={id}
               type="button"
-              onClick={() => focusOn(id)}
+              onClick={() => {
+                setSelectedId(id);
+                focusOn(id);
+              }}
               className={`rounded-full border px-3 py-1 ${
                 id === selectedId
                   ? "border-sky-400 bg-sky-400/15 text-sky-200"
