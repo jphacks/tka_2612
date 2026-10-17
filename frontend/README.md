@@ -1,3 +1,19 @@
+# frontend
+
+## バックエンドとつないで動かす
+
+おすすめの結果はバックエンドの API から取得する。2つのターミナルで、それぞれ起動する。
+
+```sh
+make -C backend dev    # API: http://localhost:8000
+make -C frontend dev   # 画面: http://localhost:5173
+```
+
+画面からの `/api/...` へのリクエストは、Vite のプロキシでバックエンドに転送される（`vite.config.ts`）。
+転送先を変えるときは、環境変数 `BACKEND_URL` を指定する。
+
+---
+
 # Welcome to React Router!
 
 A modern, production-ready template for building full-stack React applications using React Router.

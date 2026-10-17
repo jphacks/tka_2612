@@ -1168,3 +1168,34 @@ textarea:focus-visible,
     transition-duration: 0.01ms !important;
   }
 }
+
+.submit-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+  transform: none;
+}
+
+.request-error {
+  grid-column: 1 / -1;
+  text-align: center;
+}
+
+.unregistered {
+  margin-top: 18px;
+  padding: 14px 18px;
+  border: 1px dashed #e7d6c7;
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.unregistered h3 {
+  margin: 0 0 6px;
+  color: #9e765e;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.unregistered p {
+  margin: 0;
+}

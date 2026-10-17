@@ -1,33 +1,9 @@
 import { useEffect, useState } from "react";
+import { type RecommendResponse, recommend } from "~/lib/api";
 import type { Route } from "./+types/home";
 
-const sampleCocktails = [
-  {
-    name: "カシスオレンジ",
-    englishName: "Cassis Orange",
-    description:
-      "カシスの甘酸っぱさとオレンジの果実感。飲みやすく華やかな一杯。",
-    tags: ["甘口", "フルーティー"],
-    match: 96,
-    color: "cassis",
-  },
-  {
-    name: "ファジーネーブル",
-    englishName: "Fuzzy Navel",
-    description: "ピーチのやさしい甘みとオレンジの爽やかさが広がります。",
-    tags: ["甘口", "ピーチ"],
-    match: 89,
-    color: "peach",
-  },
-  {
-    name: "チャイナブルー",
-    englishName: "China Blue",
-    description: "ライチの香りにグレープフルーツのほろ苦さを添えた味わい。",
-    tags: ["さっぱり", "柑橘"],
-    match: 82,
-    color: "blue",
-  },
-];
+// 結果カードの色。おすすめの順に繰り返す
+const cardColors = ["cassis", "peach", "blue"];
 
 export function meta(_: Route.MetaArgs) {
   return [
@@ -46,7 +22,9 @@ export default function Home() {
   const [imageError, setImageError] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [showResults, setShowResults] = useState(false);
+  const [result, setResult] = useState<RecommendResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [requestError, setRequestError] = useState("");
 
   useEffect(() => {
     if (!imageFile) {
@@ -68,12 +46,23 @@ export default function Home() {
       return;
     }
     setImageFile(file);
-    setShowResults(false);
+    setResult(null);
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setShowResults(true);
+    setIsLoading(true);
+    setRequestError("");
+    try {
+      setResult(await recommend(preference.trim(), imageFile));
+    } catch {
+      setResult(null);
+      setRequestError(
+        "おすすめを取得できませんでした。時間をおいてもう一度お試しください。",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -167,7 +156,7 @@ export default function Home() {
               value={preference}
               onChange={(event) => {
                 setPreference(event.target.value);
-                setShowResults(false);
+                setResult(null);
               }}
               placeholder="例：甘くてフルーティーなものが飲みたい"
               rows={3}
@@ -181,7 +170,7 @@ export default function Home() {
                     key={suggestion}
                     onClick={() => {
                       setPreference(suggestion);
-                      setShowResults(false);
+                      setResult(null);
                     }}
                     type="button"
                   >
@@ -226,7 +215,7 @@ export default function Home() {
                   className="remove-image"
                   onClick={() => {
                     setImageFile(null);
-                    setShowResults(false);
+                    setResult(null);
                   }}
                   type="button"
                   aria-label="選択した写真を削除"
@@ -272,19 +261,28 @@ export default function Home() {
             </p>
           </div>
 
-          <button className="submit-button" type="submit">
-            <span>おすすめを見つける</span>
+          <button
+            className="submit-button"
+            disabled={isLoading}
+            type="submit"
+          >
+            <span>{isLoading ? "探しています…" : "おすすめを見つける"}</span>
             <span className="submit-arrow" aria-hidden="true">
               →
             </span>
           </button>
+          {requestError && (
+            <p className="field-error request-error" role="alert">
+              {requestError}
+            </p>
+          )}
           <p className="demo-note">
-            現在は画面確認用のサンプル結果を表示します
+            現在はモックのおすすめ結果を表示します
           </p>
         </form>
       </section>
 
-      {showResults && (
+      {result && (
         <section
           className="results-section"
           aria-live="polite"
@@ -295,16 +293,16 @@ export default function Home() {
               <p className="eyebrow section-eyebrow">MADE FOR YOUR MOOD</p>
               <h2 id="results-title">今夜のおすすめ</h2>
               <p className="results-description">
-                「{preference.trim()}」に合わせたサンプルです。
+                「{result.query}」に合うお酒を、相性の高い順に紹介します。
               </p>
             </div>
-            <span className="mock-label">SAMPLE</span>
+            <span className="mock-label">MOCK</span>
           </div>
           <div className="cocktail-list">
-            {sampleCocktails.map((cocktail, index) => (
-              <article className="cocktail-card" key={cocktail.name}>
+            {result.recommendations.map(({ cocktail, score }, index) => (
+              <article className="cocktail-card" key={cocktail.id}>
                 <div
-                  className={`cocktail-art cocktail-art-${cocktail.color}`}
+                  className={`cocktail-art cocktail-art-${cardColors[index % cardColors.length]}`}
                   aria-hidden="true"
                 >
                   <span className="cocktail-number">0{index + 1}</span>
@@ -313,18 +311,18 @@ export default function Home() {
                   </span>
                 </div>
                 <div className="cocktail-info">
-                  <p className="cocktail-english">{cocktail.englishName}</p>
+                  <p className="cocktail-english">{cocktail.aliases[0]}</p>
                   <h3>{cocktail.name}</h3>
                   <p className="cocktail-description">{cocktail.description}</p>
                   <div className="cocktail-tags">
-                    {cocktail.tags.map((tag) => (
-                      <span key={tag}>{tag}</span>
+                    {cocktail.ingredients.map((ingredient) => (
+                      <span key={ingredient}>{ingredient}</span>
                     ))}
                   </div>
                 </div>
                 <div className="match-score">
                   <strong>
-                    {cocktail.match}
+                    {Math.round(score * 100)}
                     <small>%</small>
                   </strong>
                   <span>相性</span>
@@ -332,6 +330,12 @@ export default function Home() {
               </article>
             ))}
           </div>
+          {result.unregistered.length > 0 && (
+            <div className="unregistered">
+              <h3>読み取れたが未登録のお酒</h3>
+              <p>{result.unregistered.join("、")}</p>
+            </div>
+          )}
         </section>
       )}
 
