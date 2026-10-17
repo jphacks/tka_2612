@@ -22,6 +22,11 @@
 - `git commit --no-verify` でフックを飛ばさない
 - `# noqa` / `# type: ignore` / `biome-ignore` の追加や、ルールを緩める設定変更でエラーを黙らせない。必要な場合は理由を添えてユーザに確認する
 
+## API
+
+- バックエンドの API を変更したら、`backend/` → `frontend/` の順に `make gen-api` を実行し、生成物も一緒にコミットする
+- フロントエンドからバックエンドを呼ぶときは、orval が生成した `frontend/app/api/generated.ts` の関数を使う。生成物は手で編集しない
+
 ## 依存ライブラリ
 
 - ライブラリを勝手に追加しない（`uv add` / `npm install <pkg>` など）
