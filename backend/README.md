@@ -33,6 +33,10 @@ make dev
 | POST | `/menu/scan` | メニューの写真から、お酒の名前を AI（Gemini）で読み取る |
 | POST | `/menu/match` | メニューのお酒の名前を、データベースのお酒と照合する |
 | POST | `/recommendations` | 入力文（味・気分）に合うお酒を上位5件返す。候補をメニュー内に絞れる |
+| POST | `/favorites` | お気に入りに登録する（お気に入りの総数を返す） |
+| DELETE | `/favorites/{cocktail_id}` | お気に入りを解除する（お気に入りの総数を返す） |
+| GET | `/favorites` | 端末のお気に入りの一覧 |
+| GET | `/favorites/counts` | お気に入りの総数が多い順のお酒 |
 
 詳細は Swagger UI か `openapi.json` を参照。
 
@@ -64,6 +68,12 @@ make dev
 同じ入力文のベクトルはメモリに保持して再利用する（無料枠の節約。サーバーを再起動すると消える）。
 
 写真を使う流れ: `/menu/scan`（写真 → 名前）→ `/menu/match`（名前 → お酒のID）→ `/recommendations`（ID と入力文 → おすすめ）
+
+### お気に入り
+
+ログインはなく、ブラウザごとのランダムな端末ID（`device_id`）で記録する。個人情報は持たない。
+お気に入りとお酒ごとの総数は SQLite（既定は `data/app.db`、環境変数 `DATABASE_PATH` で変更できる）に保存する。
+総数は登録・解除と同じトランザクションで更新する。DB ファイルはコミットしない。
 
 ### ベクトルの作り直し
 

@@ -208,6 +208,185 @@
         }
       }
     },
+    "/favorites": {
+      "post": {
+        "tags": [
+          "favorites"
+        ],
+        "summary": "Add Favorite",
+        "description": "お気に入りに登録する（登録済みなら何もしない）",
+        "operationId": "add_favorite",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FavoriteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FavoriteStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "お酒が見つからない"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "favorites"
+        ],
+        "summary": "List Favorites",
+        "description": "端末のお気に入りのお酒（新しく登録した順）",
+        "operationId": "list_favorites",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "description": "ブラウザごとのランダムな端末ID",
+              "title": "Device Id"
+            },
+            "description": "ブラウザごとのランダムな端末ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Cocktail"
+                  },
+                  "title": "Response List Favorites"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/favorites/{cocktail_id}": {
+      "delete": {
+        "tags": [
+          "favorites"
+        ],
+        "summary": "Remove Favorite",
+        "description": "お気に入りから外す（未登録なら何もしない）",
+        "operationId": "remove_favorite",
+        "parameters": [
+          {
+            "name": "cocktail_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cocktail Id"
+            }
+          },
+          {
+            "name": "device_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "description": "ブラウザごとのランダムな端末ID",
+              "title": "Device Id"
+            },
+            "description": "ブラウザごとのランダムな端末ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FavoriteStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "お酒が見つからない"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/favorites/counts": {
+      "get": {
+        "tags": [
+          "favorites"
+        ],
+        "summary": "List Favorite Counts",
+        "description": "お気に入りの総数が多い順のお酒（1件以上のもの）",
+        "operationId": "list_favorite_counts",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FavoriteCount"
+                  },
+                  "type": "array",
+                  "title": "Response List Favorite Counts"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -292,6 +471,75 @@
         ],
         "title": "Cocktail",
         "description": "お酒の情報（ベクトルは API では返さない）"
+      },
+      "FavoriteCount": {
+        "properties": {
+          "cocktail": {
+            "$ref": "#/components/schemas/Cocktail"
+          },
+          "favorite_count": {
+            "type": "integer",
+            "title": "Favorite Count",
+            "description": "お気に入りの総数（全端末）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cocktail",
+          "favorite_count"
+        ],
+        "title": "FavoriteCount",
+        "description": "お酒ごとのお気に入りの総数"
+      },
+      "FavoriteRequest": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Device Id",
+            "description": "ブラウザごとのランダムな端末ID"
+          },
+          "cocktail_id": {
+            "type": "string",
+            "title": "Cocktail Id",
+            "description": "お酒のID"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_id",
+          "cocktail_id"
+        ],
+        "title": "FavoriteRequest",
+        "description": "お気に入りの登録"
+      },
+      "FavoriteStatus": {
+        "properties": {
+          "cocktail_id": {
+            "type": "string",
+            "title": "Cocktail Id",
+            "description": "お酒のID"
+          },
+          "favorited": {
+            "type": "boolean",
+            "title": "Favorited",
+            "description": "この端末でお気に入りに登録されているか"
+          },
+          "favorite_count": {
+            "type": "integer",
+            "title": "Favorite Count",
+            "description": "このお酒のお気に入りの総数（全端末）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cocktail_id",
+          "favorited",
+          "favorite_count"
+        ],
+        "title": "FavoriteStatus",
+        "description": "お気に入りの登録・解除の結果"
       },
       "HTTPValidationError": {
         "properties": {
