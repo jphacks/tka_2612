@@ -58,21 +58,9 @@ export default function Home() {
       let ocrError: string | null = null;
 
       if (imageFile) {
+        setOcrProgress("メニューを読み取っています…");
         try {
-          recognizedMenuItems = await recognizeMenuImage(
-            imageFile,
-            ({ status, progress }) => {
-              if (status === "loading language traineddata") {
-                setOcrProgress("日本語の認識データを準備しています…");
-              } else if (status === "recognizing text") {
-                setOcrProgress(
-                  `メニューを読み取り中… ${Math.round(progress * 100)}%`,
-                );
-              } else {
-                setOcrProgress("OCRエンジンを準備しています…");
-              }
-            },
-          );
+          recognizedMenuItems = await recognizeMenuImage(imageFile);
         } catch (error) {
           ocrError =
             error instanceof Error
@@ -94,6 +82,7 @@ export default function Home() {
       );
     } finally {
       setIsSubmitting(false);
+      setOcrProgress("");
     }
   }
 
@@ -316,10 +305,7 @@ export default function Home() {
             )}
             <p className="privacy-note">
               <span aria-hidden="true">◈</span>{" "}
-              写真は端末内で認識し、外部には送信しません
-            </p>
-            <p className="ocr-model-note">
-              初回のOCRには認識データ取得のためインターネット接続が必要です
+              写真はメニューの読み取りのため、Google の AI（Gemini）に送信します
             </p>
             {ocrProgress && (
               <p className="ocr-progress" aria-live="polite">

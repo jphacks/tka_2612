@@ -108,7 +108,7 @@ export default function Cocktails() {
                   {session.menuImage
                     ? session.ocrError
                       ? `OCRに失敗しました: ${session.ocrError}`
-                      : "画像は端末内で日本語・英語のOCR処理を行いました。"
+                      : "画像のメニューを AI（Gemini）で読み取りました。"
                     : "写真を追加すると、画像内のメニューを読み取って候補を絞り込みます。"}
                 </span>
               </p>
