@@ -1,22 +1,57 @@
-const FAVORITES_KEY = "sip.favorite-cocktails";
+import {
+  addFavorite,
+  listFavoriteCounts,
+  listFavorites,
+  removeFavorite,
+} from "~/api/generated";
 
-export function loadFavorites(): string[] {
-  const serialized = localStorage.getItem(FAVORITES_KEY);
-  if (!serialized) return [];
+const DEVICE_ID_KEY = "sip.device-id";
 
-  const value: unknown = JSON.parse(serialized);
-  if (
-    !Array.isArray(value) ||
-    !value.every(
-      (cocktailId): cocktailId is string => typeof cocktailId === "string",
-    )
-  ) {
-    throw new Error("お気に入りの保存データを読み取れませんでした。");
+// ブラウザごとのランダムな端末 ID。お気に入りの記録に使い、個人情報は持たない
+export function getDeviceId(): string {
+  let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_KEY, deviceId);
   }
-
-  return value;
+  return deviceId;
 }
 
-export function saveFavorites(cocktailIds: string[]): void {
-  localStorage.setItem(FAVORITES_KEY, JSON.stringify(cocktailIds));
+// この端末でお気に入りに登録したお酒の ID
+export async function loadFavoriteIds(): Promise<string[]> {
+  const response = await listFavorites({ device_id: getDeviceId() });
+  if (response.status !== 200) {
+    throw new Error("お気に入りを読み込めませんでした。");
+  }
+  return response.data.map((cocktail) => cocktail.id);
+}
+
+// お酒のお気に入りの総数（全端末）。まだ誰も登録していなければ 0
+export async function loadFavoriteCount(cocktailId: string): Promise<number> {
+  const response = await listFavoriteCounts();
+  if (response.status !== 200) {
+    throw new Error("お気に入りの数を読み込めませんでした。");
+  }
+  return (
+    response.data.find((item) => item.cocktail.id === cocktailId)
+      ?.favorite_count ?? 0
+  );
+}
+
+// お気に入りの登録・解除を切り替え、登録後の状態と総数を返す
+export async function setFavorite(
+  cocktailId: string,
+  favorite: boolean,
+): Promise<{ favorited: boolean; count: number }> {
+  const deviceId = getDeviceId();
+  const response = favorite
+    ? await addFavorite({ device_id: deviceId, cocktail_id: cocktailId })
+    : await removeFavorite(cocktailId, { device_id: deviceId });
+  if (response.status !== 200) {
+    throw new Error("お気に入りを保存できませんでした。");
+  }
+  return {
+    favorited: response.data.favorited,
+    count: response.data.favorite_count,
+  };
 }

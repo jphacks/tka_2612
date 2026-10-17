@@ -3,6 +3,8 @@ import type { RecognizedMenuItem } from "./ocr";
 const SESSION_KEY = "sip.recommendation-session";
 
 export type RecommendationSession = {
+  // 検索ごとの ID。おすすめの結果をこの検索のものとして保存するのに使う
+  id: string;
   query: string;
   menuImage: string | null;
   menuImageName: string | null;
@@ -78,6 +80,7 @@ export async function saveRecommendationSession(
   ocrError: string | null,
 ): Promise<void> {
   const session: RecommendationSession = {
+    id: crypto.randomUUID(),
     query,
     menuImage: imageFile ? await fileToImageDataUrl(imageFile) : null,
     menuImageName: imageFile?.name ?? null,
@@ -104,6 +107,8 @@ export function loadRecommendationSession(): RecommendationSession | null {
   const ocrError = "ocrError" in value ? value.ocrError : null;
 
   if (
+    !("id" in value) ||
+    typeof value.id !== "string" ||
     !("query" in value) ||
     typeof value.query !== "string" ||
     !("menuImage" in value) ||
@@ -119,6 +124,7 @@ export function loadRecommendationSession(): RecommendationSession | null {
   }
 
   return {
+    id: value.id,
     query: value.query,
     menuImage: value.menuImage,
     menuImageName: value.menuImageName,
