@@ -34,6 +34,10 @@ npm run dev
 
 Your application will be available at `http://localhost:5173`.
 
+## OCR
+
+Menu photos are recognized locally in the browser with Tesseract.js (Japanese and English); the images are not uploaded to the backend or an OCR provider. On first use, the browser needs an internet connection to download Tesseract's runtime and language data from jsDelivr. Recognized menu items are matched against the cocktail catalog, with a full-catalog fallback when recognition or matching fails.
+
 ## Building for Production
 
 Create a production build:
