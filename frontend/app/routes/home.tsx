@@ -261,11 +261,7 @@ export default function Home() {
             </p>
           </div>
 
-          <button
-            className="submit-button"
-            disabled={isLoading}
-            type="submit"
-          >
+          <button className="submit-button" disabled={isLoading} type="submit">
             <span>{isLoading ? "探しています…" : "おすすめを見つける"}</span>
             <span className="submit-arrow" aria-hidden="true">
               →
@@ -276,9 +272,7 @@ export default function Home() {
               {requestError}
             </p>
           )}
-          <p className="demo-note">
-            現在はモックのおすすめ結果を表示します
-          </p>
+          <p className="demo-note">現在はモックのおすすめ結果を表示します</p>
         </form>
       </section>
 
