@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { type CloudScene, createCloudScene } from "./cloudScene";
 import type { Cocktail } from "./types";
 
-export type FocusRequest = { id: number; key: number };
+export type FocusRequest = { id: number; zoomIn: boolean; key: number };
 
 type Props = {
   cocktails: Cocktail[];
@@ -60,7 +60,7 @@ export function CocktailCloud({
   }, [selectedId]);
 
   useEffect(() => {
-    if (focus) sceneRef.current?.flyTo(focus.id);
+    if (focus) sceneRef.current?.flyTo(focus.id, focus.zoomIn);
   }, [focus]);
 
   return (

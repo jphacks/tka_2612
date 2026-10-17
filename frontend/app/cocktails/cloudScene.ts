@@ -7,9 +7,13 @@ import type { Cocktail } from "./types";
 const IDLE_RELEVANCE = 0.55;
 // カメラからこの距離以内の点に名前を表示する
 const LABEL_DISTANCE = 5;
-const MAX_LABELS = 16;
+const MAX_LABELS = 10;
 // 検索結果に近づいたときの、点とカメラの距離
 const FOCUS_DISTANCE = 3;
+// クリックした点に視点を寄せるときの、点とカメラの最大距離
+const SELECT_DISTANCE = 8;
+// 下部の UI と重ならないよう、描画の中心を画面の高さに対してこの割合だけ上にずらす
+const VIEW_SHIFT_UP = 0.12;
 const FLIGHT_MS = 1400;
 const PICK_RADIUS_PX = 12;
 const CLICK_MOVE_TOLERANCE_PX = 6;
@@ -66,7 +70,8 @@ const fragmentShader = /* glsl */ `
 export type CloudScene = {
   setRelevance(relevance: Float32Array | null): void;
   setSelected(id: number | null): void;
-  flyTo(id: number): void;
+  // zoomIn が true なら点のすぐ手前まで近づき、false なら今の距離をなるべく保つ
+  flyTo(id: number, zoomIn: boolean): void;
   dispose(): void;
 };
 
@@ -91,7 +96,7 @@ export function createCloudScene(
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(55, 1, 0.05, 200);
-  camera.position.set(0, 4, 24);
+  camera.position.set(0, 3, 20);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
@@ -142,7 +147,8 @@ export function createCloudScene(
   const labels = Array.from({ length: MAX_LABELS + 1 }, () => {
     const el = document.createElement("div");
     el.className =
-      "absolute left-0 top-0 whitespace-nowrap rounded bg-slate-950/70 px-1.5 py-0.5 text-xs text-slate-100";
+      "absolute left-0 top-0 whitespace-nowrap text-xs text-slate-100";
+    el.style.textShadow = "0 1px 3px rgb(0 0 0 / 0.9)";
     el.style.display = "none";
     labelLayer.appendChild(el);
     return el;
@@ -151,6 +157,7 @@ export function createCloudScene(
   let width = 1;
   let height = 1;
   let selectedIndex = -1;
+  let hoveredIndex = -1;
   let relevanceAnimating = false;
   let flight: Flight | null = null;
 
@@ -159,7 +166,14 @@ export function createCloudScene(
     height = Math.max(container.clientHeight, 1);
     renderer.setSize(width, height);
     camera.aspect = width / height;
-    camera.updateProjectionMatrix();
+    camera.setViewOffset(
+      width,
+      height,
+      0,
+      height * VIEW_SHIFT_UP,
+      width,
+      height,
+    );
     material.uniforms.uViewportHeight.value = height * renderer.getPixelRatio();
   };
   resize();
@@ -188,17 +202,16 @@ export function createCloudScene(
       const distance = point
         .fromArray(positions, i * 3)
         .distanceTo(camera.position);
-      if (distance > LABEL_DISTANCE && i !== selectedIndex) continue;
+      const pinned = i === selectedIndex || i === hoveredIndex;
+      if (distance > LABEL_DISTANCE && !pinned) continue;
       const screen = toScreen(i);
       if (screen) candidates.push({ i, distance, ...screen });
     }
-    // 選択中の点は常に表示し、残りはカメラに近い順に表示する
-    candidates.sort((a, b) =>
-      a.i === selectedIndex
-        ? -1
-        : b.i === selectedIndex
-          ? 1
-          : a.distance - b.distance,
+    // 選択中・ホバー中の点は常に表示し、残りはカメラに近い順に表示する
+    const priority = (i: number) =>
+      i === selectedIndex ? 0 : i === hoveredIndex ? 1 : 2;
+    candidates.sort(
+      (a, b) => priority(a.i) - priority(b.i) || a.distance - b.distance,
     );
 
     labels.forEach((el, k) => {
@@ -209,7 +222,7 @@ export function createCloudScene(
       }
       const name = cocktails[c.i].name;
       if (el.textContent !== name) el.textContent = name;
-      const isSelected = c.i === selectedIndex;
+      const isPinned = c.i === selectedIndex || c.i === hoveredIndex;
       const fade =
         1 -
         THREE.MathUtils.smoothstep(
@@ -217,13 +230,13 @@ export function createCloudScene(
           LABEL_DISTANCE * 0.6,
           LABEL_DISTANCE,
         );
-      const opacity = isSelected
+      const opacity = isPinned
         ? 1
         : fade * (0.25 + 0.75 * currentRelevance[c.i]);
       el.style.display = "block";
       el.style.opacity = opacity.toFixed(2);
-      el.style.zIndex = isSelected ? "1" : "0";
-      el.style.fontWeight = isSelected ? "600" : "400";
+      el.style.zIndex = isPinned ? "1" : "0";
+      el.style.fontWeight = isPinned ? "600" : "400";
       el.style.transform = `translate(${c.x + 10}px, ${c.y}px) translateY(-50%)`;
     });
   };
@@ -244,7 +257,7 @@ export function createCloudScene(
         best = i;
       }
     }
-    return best === null ? null : cocktails[best].id;
+    return best;
   };
 
   let pointerDown: { x: number; y: number } | null = null;
@@ -258,16 +271,23 @@ export function createCloudScene(
       e.clientY - pointerDown.y,
     );
     pointerDown = null;
-    if (moved <= CLICK_MOVE_TOLERANCE_PX) onPick(pickAt(e.clientX, e.clientY));
+    if (moved > CLICK_MOVE_TOLERANCE_PX) return;
+    const picked = pickAt(e.clientX, e.clientY);
+    onPick(picked === null ? null : cocktails[picked].id);
   };
+  // マウスを乗せた点の名前を出し、クリックできることをカーソルで示す
   const handlePointerMove = (e: PointerEvent) => {
     if (pointerDown || e.pointerType !== "mouse") return;
-    renderer.domElement.style.cursor =
-      pickAt(e.clientX, e.clientY) === null ? "grab" : "pointer";
+    hoveredIndex = pickAt(e.clientX, e.clientY) ?? -1;
+    renderer.domElement.style.cursor = hoveredIndex < 0 ? "grab" : "pointer";
+  };
+  const handlePointerLeave = () => {
+    hoveredIndex = -1;
   };
   renderer.domElement.addEventListener("pointerdown", handlePointerDown);
   renderer.domElement.addEventListener("pointerup", handlePointerUp);
   renderer.domElement.addEventListener("pointermove", handlePointerMove);
+  renderer.domElement.addEventListener("pointerleave", handlePointerLeave);
 
   const stopAutoMotion = () => {
     controls.autoRotate = false;
@@ -323,18 +343,25 @@ export function createCloudScene(
         id === null ? -1 : cocktails.findIndex((c) => c.id === id);
       material.uniforms.uSelected.value = selectedIndex;
     },
-    flyTo(id) {
+    flyTo(id, zoomIn) {
       const index = cocktails.findIndex((c) => c.id === id);
       if (index < 0) return;
       const toTarget = new THREE.Vector3().fromArray(positions, index * 3);
-      // 今の見る向きを保ったまま、点の手前まで近づく
+      // 今の見る向きを保ったまま、点を視点の中心に持ってくる
       const direction = camera.position.clone().sub(controls.target);
       if (direction.lengthSq() < 1e-6) direction.set(0, 0, 1);
       direction.normalize();
+      const distance = zoomIn
+        ? FOCUS_DISTANCE
+        : THREE.MathUtils.clamp(
+            camera.position.distanceTo(toTarget),
+            FOCUS_DISTANCE,
+            SELECT_DISTANCE,
+          );
       controls.autoRotate = false;
       flight = {
         fromPosition: camera.position.clone(),
-        toPosition: toTarget.clone().addScaledVector(direction, FOCUS_DISTANCE),
+        toPosition: toTarget.clone().addScaledVector(direction, distance),
         fromTarget: controls.target.clone(),
         toTarget,
         startedAt: performance.now(),
@@ -348,6 +375,10 @@ export function createCloudScene(
       renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
       renderer.domElement.removeEventListener("pointerup", handlePointerUp);
       renderer.domElement.removeEventListener("pointermove", handlePointerMove);
+      renderer.domElement.removeEventListener(
+        "pointerleave",
+        handlePointerLeave,
+      );
       geometry.dispose();
       material.dispose();
       renderer.dispose();
