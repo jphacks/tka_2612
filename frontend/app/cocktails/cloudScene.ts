@@ -14,6 +14,8 @@ const FOCUS_DISTANCE = 3;
 const SELECT_DISTANCE = 8;
 // 下部の UI と重ならないよう、描画の中心を画面の高さに対してこの割合だけ上にずらす
 const VIEW_SHIFT_UP = 0.12;
+// 検索で最も一致した点の色。ベース酒の色と紛れないものにする
+const BEST_MATCH_COLOR = "#00ffa3";
 const FLIGHT_MS = 1400;
 const PICK_RADIUS_PX = 12;
 const CLICK_MOVE_TOLERANCE_PX = 6;
@@ -26,6 +28,8 @@ const vertexShader = /* glsl */ `
   uniform float uViewportHeight;
   uniform float uPixelRatio;
   uniform float uSelected;
+  uniform float uBest;
+  uniform vec3 uBestColor;
   varying vec3 vColor;
   varying float vAlpha;
   varying float vSelected;
@@ -41,7 +45,8 @@ const vertexShader = /* glsl */ `
     float minSize = mix(1.5, 14.0, selected) * uPixelRatio;
     gl_PointSize = clamp(pixelSize, minSize, 72.0 * uPixelRatio);
 
-    vColor = aColor;
+    float best = step(abs(aIndex - uBest), 0.5);
+    vColor = mix(aColor, uBestColor, best);
     vAlpha = max(mix(0.04, 0.95, pow(aRelevance, 1.6)), selected);
     vSelected = selected;
   }
@@ -70,6 +75,7 @@ const fragmentShader = /* glsl */ `
 export type CloudScene = {
   setRelevance(relevance: Float32Array | null): void;
   setSelected(id: number | null): void;
+  setBestMatch(id: number | null): void;
   // zoomIn が true なら点のすぐ手前まで近づき、false なら今の距離をなるべく保つ
   flyTo(id: number, zoomIn: boolean): void;
   dispose(): void;
@@ -136,6 +142,8 @@ export function createCloudScene(
       uViewportHeight: { value: 1 },
       uPixelRatio: { value: renderer.getPixelRatio() },
       uSelected: { value: -1 },
+      uBest: { value: -1 },
+      uBestColor: { value: new THREE.Color(BEST_MATCH_COLOR) },
     },
     vertexShader,
     fragmentShader,
@@ -342,6 +350,10 @@ export function createCloudScene(
       selectedIndex =
         id === null ? -1 : cocktails.findIndex((c) => c.id === id);
       material.uniforms.uSelected.value = selectedIndex;
+    },
+    setBestMatch(id) {
+      material.uniforms.uBest.value =
+        id === null ? -1 : cocktails.findIndex((c) => c.id === id);
     },
     flyTo(id, zoomIn) {
       const index = cocktails.findIndex((c) => c.id === id);

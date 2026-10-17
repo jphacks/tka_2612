@@ -8,6 +8,8 @@ type Props = {
   cocktails: Cocktail[];
   relevance: Float32Array | null;
   selectedId: number | null;
+  // 検索で最も一致したカクテル。この点だけ色を変える
+  bestMatchId: number | null;
   // key を変えると同じ点にもう一度近づく
   focus: FocusRequest | null;
   onSelect: (id: number | null) => void;
@@ -17,6 +19,7 @@ export function CocktailCloud({
   cocktails,
   relevance,
   selectedId,
+  bestMatchId,
   focus,
   onSelect,
 }: Props) {
@@ -58,6 +61,10 @@ export function CocktailCloud({
   useEffect(() => {
     sceneRef.current?.setSelected(selectedId);
   }, [selectedId]);
+
+  useEffect(() => {
+    sceneRef.current?.setBestMatch(bestMatchId);
+  }, [bestMatchId]);
 
   useEffect(() => {
     if (focus) sceneRef.current?.flyTo(focus.id, focus.zoomIn);

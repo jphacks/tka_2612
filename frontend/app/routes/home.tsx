@@ -63,6 +63,7 @@ export default function Home() {
         cocktails={mockCocktails}
         relevance={result?.relevance ?? null}
         selectedId={selectedId}
+        bestMatchId={result?.ranking[0] ?? null}
         focus={focus}
         onSelect={handleSelect}
       />
