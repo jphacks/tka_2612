@@ -106,6 +106,9 @@
               }
             }
           },
+          "503": {
+            "description": "Gemini が混み合っている"
+          },
           "422": {
             "description": "Validation Error",
             "content": {

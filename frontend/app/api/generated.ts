@@ -269,10 +269,18 @@ export type recommendResponse422 = {
   status: 422;
 };
 
+export type recommendResponse503 = {
+  data: void;
+  status: 503;
+};
+
 export type recommendResponseSuccess = recommendResponse200 & {
   headers: Headers;
 };
-export type recommendResponseError = recommendResponse422 & {
+export type recommendResponseError = (
+  | recommendResponse422
+  | recommendResponse503
+) & {
   headers: Headers;
 };
 

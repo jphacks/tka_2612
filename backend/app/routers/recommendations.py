@@ -2,7 +2,7 @@ import logging
 import zlib
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from app import embedding, store
 from app.cocktail_db import COCKTAILS, COCKTAILS_BY_ID, VECTORS
@@ -39,7 +39,7 @@ def _rank_by_mock(query: str, candidates: list[Cocktail]) -> list[Recommendation
     ]
 
 
-@router.post("")
+@router.post("", responses={503: {"description": "Gemini が混み合っている"}})
 async def recommend(
     query: Annotated[str, Form(description="味の希望や、シーン・気分を表す文")],
     image: Annotated[
@@ -60,9 +60,18 @@ async def recommend(
         logger.warning("ベクトルが使えないため、モックの順位を返します")
     rank = _rank_by_vector if use_vector else _rank_by_mock
 
+    try:
+        recommendations = rank(query, candidates)
+    except embedding.EmbeddingError as e:
+        logger.warning("Gemini の呼び出しに失敗しました: %s", e)
+        raise HTTPException(
+            status_code=503,
+            detail="ただいま混み合っています。少し待ってからもう一度お試しください",
+        ) from e
+
     store.add_query(query)
     return RecommendResponse(
         query=query,
-        recommendations=rank(query, candidates),
+        recommendations=recommendations,
         unregistered=unregistered,
     )

@@ -5,6 +5,7 @@ import unittest
 from unittest import mock
 
 from fastapi.testclient import TestClient
+from google.genai import errors
 
 from app import embedding, store
 from app.cocktail_db import COCKTAILS, VECTORS
@@ -95,15 +96,19 @@ class TestRecommendations(ApiTestCase):
         self.assertEqual(res.status_code, 422)
 
 
+# 偽のベクトルの角度の刻み
+STEP = 1 / len(COCKTAILS)
+
+
 class TestRecommendationsByVector(ApiTestCase):
     """ベクトルが使えるときは、コサイン類似度の高い順に並ぶ"""
 
     def setUp(self) -> None:
         super().setUp()
-        # i 番目のお酒は、入力文のベクトル [1, 0] から角度 0.1 * i だけ離れている
-        # → 一覧の先頭のお酒ほど類似度が高い
+        # i 番目のお酒は、入力文のベクトル [1, 0] から角度 STEP * i だけ離れている
+        # → 一覧の先頭のお酒ほど類似度が高い（角度が半周を超えないよう、件数で割る）
         fake_vectors = {
-            c.id: [math.cos(0.1 * i), math.sin(0.1 * i)]
+            c.id: [math.cos(STEP * i), math.sin(STEP * i)]
             for i, c in enumerate(COCKTAILS)
         }
         for patcher in [
@@ -121,7 +126,7 @@ class TestRecommendationsByVector(ApiTestCase):
         ids = [r["cocktail"]["id"] for r in body["recommendations"]]
         self.assertEqual(ids, [c.id for c in COCKTAILS[:5]])
         self.assertAlmostEqual(body["recommendations"][0]["score"], 1.0)
-        self.assertAlmostEqual(body["recommendations"][1]["score"], math.cos(0.1))
+        self.assertAlmostEqual(body["recommendations"][1]["score"], math.cos(STEP))
 
     def test_with_image(self) -> None:
         body = self.recommend("甘くてフルーティ", with_image=True)
@@ -138,6 +143,47 @@ class TestRecommendationsByVector(ApiTestCase):
         body = self.recommend("甘くてフルーティ")
         scores = [r["score"] for r in body["recommendations"]]
         self.assertEqual(scores, MOCK_SCORES)
+
+    def test_gemini_error(self) -> None:
+        self.embed_query.side_effect = errors.ClientError(
+            429, {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED"}}
+        )
+        res = self.client.post("/recommendations", data={"query": "甘い"})
+        self.assertEqual(res.status_code, 503)
+        # 失敗したリクエストは集計に入れない
+        self.assertEqual(self.client.get("/stats").json()["queries"], [])
+
+
+class TestEmbedQueryCache(unittest.TestCase):
+    """同じ入力文のベクトルは保持しておき、Gemini を呼ばずに再利用する"""
+
+    def setUp(self) -> None:
+        embedding._embed_query_cached.cache_clear()
+        self.addCleanup(embedding._embed_query_cached.cache_clear)
+        patcher = mock.patch.object(embedding, "_embed", return_value=[[1.0, 0.0]])
+        self.embed = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_same_query_calls_gemini_once(self) -> None:
+        first = embedding.embed_query("甘い")
+        second = embedding.embed_query("甘い")
+        self.assertEqual(first, [1.0, 0.0])
+        self.assertEqual(first, second)
+        self.embed.assert_called_once()
+
+    def test_surrounding_spaces_ignored(self) -> None:
+        embedding.embed_query("甘い")
+        embedding.embed_query("  甘い\n")
+        self.embed.assert_called_once()
+
+    def test_different_query_calls_gemini(self) -> None:
+        embedding.embed_query("甘い")
+        embedding.embed_query("さっぱり")
+        self.assertEqual(self.embed.call_count, 2)
+
+    def test_returned_vector_is_a_copy(self) -> None:
+        embedding.embed_query("甘い").append(9.9)
+        self.assertEqual(embedding.embed_query("甘い"), [1.0, 0.0])
 
 
 class TestCosineSimilarity(unittest.TestCase):

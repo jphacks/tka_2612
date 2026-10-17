@@ -6,13 +6,22 @@
 
 import math
 import os
-from functools import cache
+from functools import cache, lru_cache
 
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 
 MODEL = "gemini-embedding-2"
 DIMENSIONS = 768
+
+# 無料枠は1分あたり100件（まとめて送っても1件ずつ数えられる）
+REQUESTS_PER_MINUTE = 100
+
+# 入力文のベクトルをメモリに何件まで保持するか（サーバーを再起動すると消える）
+QUERY_CACHE_SIZE = 1024
+
+# Gemini の呼び出しに失敗したときの例外（回数制限・通信エラーなど）
+EmbeddingError = errors.APIError
 
 
 def is_available() -> bool:
@@ -49,8 +58,17 @@ def embed_documents(titles: list[str], texts: list[str]) -> list[list[float]]:
 
 
 def embed_query(text: str) -> list[float]:
-    """ユーザーの入力文（検索する側）をベクトルにする"""
-    return _embed([f"task: search result | query: {text}"])[0]
+    """ユーザーの入力文（検索する側）をベクトルにする
+
+    同じ入力文のベクトルは保持しておき、Gemini を呼ばずに再利用する（回数制限の節約）
+    """
+    return list(_embed_query_cached(text.strip()))
+
+
+@lru_cache(maxsize=QUERY_CACHE_SIZE)
+def _embed_query_cached(text: str) -> tuple[float, ...]:
+    # 保持したベクトルが書き換えられないよう、tuple で持つ
+    return tuple(_embed([f"task: search result | query: {text}"])[0])
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:
