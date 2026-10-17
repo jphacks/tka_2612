@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from app.mock_data import COCKTAILS, COCKTAILS_BY_ID
+from app.cocktail_db import COCKTAILS, COCKTAILS_BY_ID
 from app.schemas import Cocktail
 
 router = APIRouter(prefix="/cocktails", tags=["cocktails"])

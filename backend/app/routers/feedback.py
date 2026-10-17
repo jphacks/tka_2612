@@ -3,7 +3,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from app import store
-from app.mock_data import COCKTAILS_BY_ID
+from app.cocktail_db import COCKTAILS_BY_ID
 from app.schemas import (
     CocktailStats,
     FavoriteRequest,

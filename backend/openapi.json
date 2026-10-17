@@ -83,7 +83,7 @@
           "recommendations"
         ],
         "summary": "Recommend",
-        "description": "好みに合うお酒を一致度の高い順に上位5件返す（モック）",
+        "description": "好みに合うお酒を一致度の高い順に上位5件返す（写真の読み取りはまだモック）",
         "operationId": "recommend_recommendations_post",
         "requestBody": {
           "content": {

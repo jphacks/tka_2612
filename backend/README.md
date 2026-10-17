@@ -13,9 +13,9 @@ make dev
 - API: http://localhost:8000
 - ドキュメント（Swagger UI）: http://localhost:8000/docs
 
-## API（現在はモック）
+## API
 
-固定データとインメモリ保存で動くモック。フィードバック・お気に入りはサーバー再起動で消える。
+メニュー写真の読み取りと保存先（インメモリ）はまだモック。フィードバック・お気に入りはサーバー再起動で消える。
 
 | メソッド | パス | 内容 |
 | --- | --- | --- |
@@ -28,6 +28,23 @@ make dev
 | GET | `/stats` | 店舗向けの集計 |
 
 詳細は Swagger UI か `openapi.json` を参照。
+
+## お酒のデータとベクトル
+
+| ファイル | 内容 |
+| --- | --- |
+| `data/cocktails_source.json` | 手で書く元データ（名前・別名・説明文・材料） |
+| `data/cocktails.json` | 元データに Gemini（`gemini-embedding-2`、768 次元）のベクトルを付けたもの。生成物 |
+
+元データを変えたら、`backend/` で次を実行してベクトルを作り直し、一緒にコミットする。
+
+```sh
+cp .env.example .env   # 初回のみ。GEMINI_API_KEY を書く
+make embed
+```
+
+おすすめでは、入力文も同じモデルでベクトルにして、コサイン類似度の高い順に並べる。
+API キーがない、または `data/cocktails.json` がないときは、モックの順位を返す（画面の開発はキーなしでできる）。
 
 ## openapi.json の生成
 

@@ -1,18 +1,25 @@
-"""モック API のテスト"""
+"""API のテスト"""
 
+import math
 import unittest
+from unittest import mock
 
 from fastapi.testclient import TestClient
 
-from app import store
+from app import embedding, store
+from app.cocktail_db import COCKTAILS, VECTORS
 from app.main import app
-from app.mock_data import COCKTAILS, MOCK_MENU_COCKTAIL_IDS, MOCK_UNREGISTERED
+from app.mock_data import MOCK_MENU_COCKTAIL_IDS, MOCK_SCORES, MOCK_UNREGISTERED
 
 
 class ApiTestCase(unittest.TestCase):
     def setUp(self) -> None:
         store.clear()
         self.client = TestClient(app)
+        # テストでは Gemini を呼ばない。ベクトルを使うテストは個別に差し替える
+        patcher = mock.patch.object(embedding, "is_available", return_value=False)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def recommend(self, query: str, *, with_image: bool = False) -> dict:
         files = {"image": ("menu.jpg", b"dummy", "image/jpeg")} if with_image else None
@@ -86,6 +93,62 @@ class TestRecommendations(ApiTestCase):
     def test_query_required(self) -> None:
         res = self.client.post("/recommendations")
         self.assertEqual(res.status_code, 422)
+
+
+class TestRecommendationsByVector(ApiTestCase):
+    """ベクトルが使えるときは、コサイン類似度の高い順に並ぶ"""
+
+    def setUp(self) -> None:
+        super().setUp()
+        # i 番目のお酒は、入力文のベクトル [1, 0] から角度 0.1 * i だけ離れている
+        # → 一覧の先頭のお酒ほど類似度が高い
+        fake_vectors = {
+            c.id: [math.cos(0.1 * i), math.sin(0.1 * i)]
+            for i, c in enumerate(COCKTAILS)
+        }
+        for patcher in [
+            mock.patch.object(embedding, "is_available", return_value=True),
+            mock.patch.dict(VECTORS, fake_vectors, clear=True),
+        ]:
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        patcher = mock.patch.object(embedding, "embed_query", return_value=[1.0, 0.0])
+        self.embed_query = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_without_image(self) -> None:
+        body = self.recommend("甘くてフルーティ")
+        ids = [r["cocktail"]["id"] for r in body["recommendations"]]
+        self.assertEqual(ids, [c.id for c in COCKTAILS[:5]])
+        self.assertAlmostEqual(body["recommendations"][0]["score"], 1.0)
+        self.assertAlmostEqual(body["recommendations"][1]["score"], math.cos(0.1))
+
+    def test_with_image(self) -> None:
+        body = self.recommend("甘くてフルーティ", with_image=True)
+        ids = [r["cocktail"]["id"] for r in body["recommendations"]]
+        order = [c.id for c in COCKTAILS if c.id in MOCK_MENU_COCKTAIL_IDS]
+        self.assertEqual(ids, order[:5])
+
+    def test_query_is_embedded(self) -> None:
+        self.recommend("失恋を支えてくれるお酒")
+        self.embed_query.assert_called_once_with("失恋を支えてくれるお酒")
+
+    def test_fallback_when_vector_missing(self) -> None:
+        del VECTORS[COCKTAILS[0].id]
+        body = self.recommend("甘くてフルーティ")
+        scores = [r["score"] for r in body["recommendations"]]
+        self.assertEqual(scores, MOCK_SCORES)
+
+
+class TestCosineSimilarity(unittest.TestCase):
+    def test_same_direction(self) -> None:
+        self.assertAlmostEqual(embedding.cosine_similarity([1, 2], [2, 4]), 1.0)
+
+    def test_orthogonal(self) -> None:
+        self.assertAlmostEqual(embedding.cosine_similarity([1, 0], [0, 3]), 0.0)
+
+    def test_zero_vector(self) -> None:
+        self.assertEqual(embedding.cosine_similarity([0, 0], [1, 1]), 0.0)
 
 
 class TestFeedback(ApiTestCase):
