@@ -5,6 +5,315 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/cocktails": {
+      "get": {
+        "tags": [
+          "cocktails"
+        ],
+        "summary": "List Cocktails",
+        "description": "登録されているお酒の一覧",
+        "operationId": "list_cocktails_cocktails_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Cocktail"
+                  },
+                  "type": "array",
+                  "title": "Response List Cocktails Cocktails Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cocktails/{cocktail_id}": {
+      "get": {
+        "tags": [
+          "cocktails"
+        ],
+        "summary": "Get Cocktail",
+        "description": "お酒の詳細",
+        "operationId": "get_cocktail_cocktails__cocktail_id__get",
+        "parameters": [
+          {
+            "name": "cocktail_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cocktail Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cocktail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "お酒が見つからない"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recommendations": {
+      "post": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Recommend",
+        "description": "好みに合うお酒を一致度の高い順に上位5件返す（モック）",
+        "operationId": "recommend_recommendations_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_recommend_recommendations_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feedback": {
+      "post": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "Post Feedback",
+        "description": "推薦結果に 👍/👎 を付ける",
+        "operationId": "post_feedback_feedback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Feedback"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "お酒が見つからない"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/favorites": {
+      "get": {
+        "tags": [
+          "favorites"
+        ],
+        "summary": "List Favorites",
+        "description": "端末のお気に入りのお酒IDの一覧",
+        "operationId": "list_favorites_favorites_get",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response List Favorites Favorites Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "favorites"
+        ],
+        "summary": "Add Favorite",
+        "description": "お気に入りに登録する（登録済みなら何もしない）",
+        "operationId": "add_favorite_favorites_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FavoriteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "お酒が見つからない"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/favorites/{cocktail_id}": {
+      "delete": {
+        "tags": [
+          "favorites"
+        ],
+        "summary": "Remove Favorite",
+        "description": "お気に入りから外す（未登録なら何もしない）",
+        "operationId": "remove_favorite_favorites__cocktail_id__delete",
+        "parameters": [
+          {
+            "name": "cocktail_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cocktail Id"
+            }
+          },
+          {
+            "name": "device_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stats": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Get Stats",
+        "description": "店舗向けの集計（お酒ごとの 👍/👎・お気に入り数と、よく求められた味）",
+        "operationId": "get_stats_stats_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreStats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -25,6 +334,364 @@
             }
           }
         }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_recommend_recommendations_post": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query",
+            "description": "味の希望や、シーン・気分を表す文"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image",
+            "description": "メニューの写真。省略するとデータベース全体から探す"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "Body_recommend_recommendations_post"
+      },
+      "Cocktail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "お酒のID"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "お酒の名前（日本語）"
+          },
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Aliases",
+            "description": "照合用の別名（英名・カタカナ名など）"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "味・香り・材料の説明文"
+          },
+          "ingredients": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ingredients",
+            "description": "材料"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "aliases",
+          "description",
+          "ingredients"
+        ],
+        "title": "Cocktail",
+        "description": "お酒の情報（ベクトルは API では返さない）"
+      },
+      "CocktailStats": {
+        "properties": {
+          "cocktail": {
+            "$ref": "#/components/schemas/Cocktail"
+          },
+          "up": {
+            "type": "integer",
+            "title": "Up",
+            "description": "👍 の数"
+          },
+          "down": {
+            "type": "integer",
+            "title": "Down",
+            "description": "👎 の数"
+          },
+          "favorites": {
+            "type": "integer",
+            "title": "Favorites",
+            "description": "お気に入り登録数"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cocktail",
+          "up",
+          "down",
+          "favorites"
+        ],
+        "title": "CocktailStats",
+        "description": "お酒ごとの集計"
+      },
+      "FavoriteRequest": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "title": "Device Id",
+            "description": "ブラウザごとのランダムな端末ID"
+          },
+          "cocktail_id": {
+            "type": "string",
+            "title": "Cocktail Id",
+            "description": "お酒のID"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_id",
+          "cocktail_id"
+        ],
+        "title": "FavoriteRequest",
+        "description": "お気に入りの登録"
+      },
+      "Feedback": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "title": "Device Id",
+            "description": "ブラウザごとのランダムな端末ID"
+          },
+          "cocktail_id": {
+            "type": "string",
+            "title": "Cocktail Id",
+            "description": "お酒のID"
+          },
+          "rating": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ],
+            "title": "Rating",
+            "description": "👍 は up、👎 は down"
+          },
+          "query": {
+            "type": "string",
+            "title": "Query",
+            "description": "推薦時に入力した好み"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_id",
+          "cocktail_id",
+          "rating",
+          "query",
+          "id"
+        ],
+        "title": "Feedback",
+        "description": "保存されたフィードバック"
+      },
+      "FeedbackRequest": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "title": "Device Id",
+            "description": "ブラウザごとのランダムな端末ID"
+          },
+          "cocktail_id": {
+            "type": "string",
+            "title": "Cocktail Id",
+            "description": "お酒のID"
+          },
+          "rating": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ],
+            "title": "Rating",
+            "description": "👍 は up、👎 は down"
+          },
+          "query": {
+            "type": "string",
+            "title": "Query",
+            "description": "推薦時に入力した好み"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_id",
+          "cocktail_id",
+          "rating",
+          "query"
+        ],
+        "title": "FeedbackRequest",
+        "description": "推薦結果へのフィードバック"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "QueryStats": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "count"
+        ],
+        "title": "QueryStats",
+        "description": "よく求められた味（入力文）の集計"
+      },
+      "RecommendResponse": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query",
+            "description": "ユーザーが入力した好み"
+          },
+          "recommendations": {
+            "items": {
+              "$ref": "#/components/schemas/Recommendation"
+            },
+            "type": "array",
+            "title": "Recommendations",
+            "description": "一致度の高い順のおすすめ（上位5件まで）"
+          },
+          "unregistered": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unregistered",
+            "description": "写真から読み取れたが未登録のお酒の名前。写真なしのときは空"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "recommendations",
+          "unregistered"
+        ],
+        "title": "RecommendResponse",
+        "description": "おすすめの結果"
+      },
+      "Recommendation": {
+        "properties": {
+          "cocktail": {
+            "$ref": "#/components/schemas/Cocktail"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "description": "一致度（コサイン類似度）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cocktail",
+          "score"
+        ],
+        "title": "Recommendation",
+        "description": "おすすめ1件"
+      },
+      "StoreStats": {
+        "properties": {
+          "cocktails": {
+            "items": {
+              "$ref": "#/components/schemas/CocktailStats"
+            },
+            "type": "array",
+            "title": "Cocktails",
+            "description": "👍 の多い順"
+          },
+          "queries": {
+            "items": {
+              "$ref": "#/components/schemas/QueryStats"
+            },
+            "type": "array",
+            "title": "Queries",
+            "description": "入力回数の多い順"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cocktails",
+          "queries"
+        ],
+        "title": "StoreStats",
+        "description": "店舗向けの集計"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
       }
     }
   }

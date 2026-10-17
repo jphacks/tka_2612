@@ -13,6 +13,22 @@ make dev
 - API: http://localhost:8000
 - ドキュメント（Swagger UI）: http://localhost:8000/docs
 
+## API（現在はモック）
+
+固定データとインメモリ保存で動くモック。フィードバック・お気に入りはサーバー再起動で消える。
+
+| メソッド | パス | 内容 |
+| --- | --- | --- |
+| GET | `/cocktails` | お酒の一覧 |
+| GET | `/cocktails/{cocktail_id}` | お酒の詳細 |
+| POST | `/recommendations` | おすすめ上位5件（multipart: `query`, 任意で `image`） |
+| POST | `/feedback` | 👍/👎 を付ける |
+| GET / POST | `/favorites` | お気に入りの一覧・登録 |
+| DELETE | `/favorites/{cocktail_id}` | お気に入りの解除 |
+| GET | `/stats` | 店舗向けの集計 |
+
+詳細は Swagger UI か `openapi.json` を参照。
+
 ## openapi.json の生成
 
 `backend/` で実行する。`openapi.json` が上書きされる。
