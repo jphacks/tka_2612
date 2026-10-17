@@ -4,9 +4,10 @@ FastAPI で作ったバックエンド。Python と依存ライブラリは uv �
 
 ## 開発サーバーの起動
 
+リポジトリのルートで実行する。
+
 ```sh
-cd backend
-uv run fastapi dev
+make dev
 ```
 
 - API: http://localhost:8000
