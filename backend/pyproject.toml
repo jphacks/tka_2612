@@ -1,0 +1,20 @@
+[project]
+name = "backend"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi[standard-no-fastapi-cloud-cli]>=0.143.3",
+]
+
+[tool.uv]
+# システムの Python 3.14 は標準ライブラリが欠けているため、uv が管理する Python を使う
+python-preference = "only-managed"
+
+[tool.fastapi]
+entrypoint = "app.main:app"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.1",
+    "ty>=0.0.89",
+]
