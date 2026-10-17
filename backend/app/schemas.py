@@ -67,3 +67,27 @@ class RecommendResponse(BaseModel):
     recommendations: list[Recommendation] = Field(
         description="一致度の高い順のおすすめ（上位5件まで）"
     )
+
+
+class FavoriteRequest(BaseModel):
+    """お気に入りの登録"""
+
+    device_id: str = Field(
+        min_length=1, max_length=100, description="ブラウザごとのランダムな端末ID"
+    )
+    cocktail_id: str = Field(description="お酒のID")
+
+
+class FavoriteStatus(BaseModel):
+    """お気に入りの登録・解除の結果"""
+
+    cocktail_id: str = Field(description="お酒のID")
+    favorited: bool = Field(description="この端末でお気に入りに登録されているか")
+    favorite_count: int = Field(description="このお酒のお気に入りの総数（全端末）")
+
+
+class FavoriteCount(BaseModel):
+    """お酒ごとのお気に入りの総数"""
+
+    cocktail: Cocktail
+    favorite_count: int = Field(description="お気に入りの総数（全端末）")
