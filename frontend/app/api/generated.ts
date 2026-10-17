@@ -6,7 +6,861 @@
  */
 import { API_BASE_URL } from "./config";
 
+/**
+ * お酒の情報（ベクトルは API では返さない）
+ */
+export interface Cocktail {
+  /** お酒のID */
+  id: string;
+  /** お酒の名前（日本語） */
+  name: string;
+  /** 照合用の別名（英名・表記ゆれなど） */
+  aliases: string[];
+  /** 味・香り、度数の目安、合う場面・気分の説明文 */
+  description: string;
+  /** 材料 */
+  ingredients: string[];
+}
+
+/**
+ * お酒ごとのお気に入りの総数
+ */
+export interface FavoriteCount {
+  cocktail: Cocktail;
+  /** お気に入りの総数（全端末） */
+  favorite_count: number;
+}
+
+/**
+ * お気に入りの登録
+ */
+export interface FavoriteRequest {
+  /**
+   * ブラウザごとのランダムな端末ID
+   * @minLength 1
+   * @maxLength 100
+   */
+  device_id: string;
+  /** お酒のID */
+  cocktail_id: string;
+}
+
+/**
+ * お気に入りの登録・解除の結果
+ */
+export interface FavoriteStatus {
+  /** お酒のID */
+  cocktail_id: string;
+  /** この端末でお気に入りに登録されているか */
+  favorited: boolean;
+  /** このお酒のお気に入りの総数（全端末） */
+  favorite_count: number;
+}
+
+export type ValidationErrorCtx = { [key: string]: unknown };
+
+export interface ValidationError {
+  loc: (string | number)[];
+  msg: string;
+  type: string;
+  input?: unknown;
+  ctx?: ValidationErrorCtx;
+}
+
+export interface HTTPValidationError {
+  detail?: ValidationError[];
+}
+
+/**
+ * データベースのお酒と一致した名前
+ */
+export interface MatchedCocktail {
+  /** メニューに書かれていた名前 */
+  name: string;
+  cocktail: Cocktail;
+}
+
+/**
+ * メニューに載っているお酒の名前
+ */
+export interface MenuMatchRequest {
+  /**
+   * メニューから読み取ったお酒の名前（価格などが付いていてもよい）
+   * @maxItems 200
+   */
+  names: string[];
+}
+
+/**
+ * 照合の結果
+ */
+export interface MenuMatchResponse {
+  /** データベースのお酒と一致したもの */
+  matched: MatchedCocktail[];
+  /** データベースにないお酒の名前 */
+  unregistered: string[];
+}
+
+/**
+ * よく求められた味（入力文）と回数
+ */
+export interface QueryCount {
+  /** 入力文（全角半角と空白の違いはそろえてある） */
+  query: string;
+  /** 入力された回数 */
+  count: number;
+}
+
+/**
+ * おすすめのリクエスト
+ */
+export interface RecommendRequest {
+  /**
+   * 味の希望や、シーン・気分を表す文（例: 甘くてフルーティ、失恋を支えてくれるお酒）
+   * @minLength 1
+   * @maxLength 500
+   */
+  query: string;
+  /** 候補にするお酒のID（メニューの写真から照合したものなど）。省略するとデータベース全体から選ぶ */
+  cocktail_ids?: string[] | null;
+}
+
+/**
+ * おすすめ1件
+ */
+export interface Recommendation {
+  cocktail: Cocktail;
+  /** 一致度（入力文とお酒の説明文のコサイン類似度） */
+  score: number;
+}
+
+/**
+ * おすすめの結果
+ */
+export interface RecommendResponse {
+  /** 入力文 */
+  query: string;
+  /** 一致度の高い順のおすすめ（上位5件まで） */
+  recommendations: Recommendation[];
+}
+
+/**
+ * お酒の検索のリクエスト
+ */
+export interface SearchRequest {
+  /**
+   * 検索する文（味・香り・気分・シーンなど、自由な文章）
+   * @minLength 1
+   * @maxLength 500
+   */
+  text: string;
+}
+
+/**
+ * 検索結果の1件
+ */
+export interface SimilarCocktail {
+  cocktail: Cocktail;
+  /** 一致度（入力文とお酒の説明文のコサイン類似度） */
+  score: number;
+}
+
+/**
+ * お酒の検索の結果
+ */
+export interface SearchResponse {
+  /** 検索した文 */
+  text: string;
+  /** ベクトルが近い順（一致度の高い順）のお酒（100件） */
+  results: SimilarCocktail[];
+}
+
+export type ListFavoritesParams = {
+  /**
+   * ブラウザごとのランダムな端末ID
+   * @minLength 1
+   * @maxLength 100
+   */
+  device_id: string;
+};
+
+export type RemoveFavoriteParams = {
+  /**
+   * ブラウザごとのランダムな端末ID
+   * @minLength 1
+   * @maxLength 100
+   */
+  device_id: string;
+};
+
+export type ListPopularQueriesParams = {
+  /**
+   * 返す件数（最大100）
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /**
+   * 直近何日分を数えるか。省略するとすべての期間
+   */
+  days?: number | null;
+};
+
 export type Health200 = { [key: string]: string };
+
+export type listCocktailsResponse200 = {
+  data: Cocktail[];
+  status: 200;
+};
+
+export type listCocktailsResponseSuccess = listCocktailsResponse200 & {
+  headers: Headers;
+};
+
+export type listCocktailsResponse = listCocktailsResponseSuccess;
+
+export const getListCocktailsUrl = () => {
+  return `${API_BASE_URL}/cocktails`;
+};
+
+/**
+ * 登録されているお酒の一覧
+ * @summary List Cocktails
+ */
+export const listCocktails = async (
+  options?: RequestInit,
+): Promise<listCocktailsResponse> => {
+  const res = await fetch(getListCocktailsUrl(), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listCocktailsResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as listCocktailsResponse;
+};
+
+export type getCocktailResponse200 = {
+  data: Cocktail;
+  status: 200;
+};
+
+export type getCocktailResponse404 = {
+  data: void;
+  status: 404;
+};
+
+export type getCocktailResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type getCocktailResponseSuccess = getCocktailResponse200 & {
+  headers: Headers;
+};
+export type getCocktailResponseError = (
+  | getCocktailResponse404
+  | getCocktailResponse422
+) & {
+  headers: Headers;
+};
+
+export type getCocktailResponse =
+  | getCocktailResponseSuccess
+  | getCocktailResponseError;
+
+export const getGetCocktailUrl = (cocktailId: string) => {
+  return `${API_BASE_URL}/cocktails/${cocktailId}`;
+};
+
+/**
+ * お酒の詳細
+ * @summary Get Cocktail
+ */
+export const getCocktail = async (
+  cocktailId: string,
+  options?: RequestInit,
+): Promise<getCocktailResponse> => {
+  const res = await fetch(getGetCocktailUrl(cocktailId), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getCocktailResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as getCocktailResponse;
+};
+
+export type searchCocktailsResponse200 = {
+  data: SearchResponse;
+  status: 200;
+};
+
+export type searchCocktailsResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type searchCocktailsResponse503 = {
+  data: void;
+  status: 503;
+};
+
+export type searchCocktailsResponseSuccess = searchCocktailsResponse200 & {
+  headers: Headers;
+};
+export type searchCocktailsResponseError = (
+  | searchCocktailsResponse422
+  | searchCocktailsResponse503
+) & {
+  headers: Headers;
+};
+
+export type searchCocktailsResponse =
+  | searchCocktailsResponseSuccess
+  | searchCocktailsResponseError;
+
+export const getSearchCocktailsUrl = () => {
+  return `${API_BASE_URL}/cocktails/search`;
+};
+
+/**
+ * 入力文をベクトル化し、ベクトルが近い順（一致度の高い順）にお酒を100件返す
+ *
+ * 一致度は入力文とお酒の説明文のコサイン類似度。データベース全体から探す。
+ * @summary Search Cocktails
+ */
+export const searchCocktails = async (
+  searchRequest: SearchRequest,
+  options?: RequestInit,
+): Promise<searchCocktailsResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  const res = await fetch(getSearchCocktailsUrl(), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(searchRequest),
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: searchCocktailsResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as searchCocktailsResponse;
+};
+
+export type matchMenuResponse200 = {
+  data: MenuMatchResponse;
+  status: 200;
+};
+
+export type matchMenuResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type matchMenuResponseSuccess = matchMenuResponse200 & {
+  headers: Headers;
+};
+export type matchMenuResponseError = matchMenuResponse422 & {
+  headers: Headers;
+};
+
+export type matchMenuResponse =
+  | matchMenuResponseSuccess
+  | matchMenuResponseError;
+
+export const getMatchMenuUrl = () => {
+  return `${API_BASE_URL}/menu/match`;
+};
+
+/**
+ * メニューに載っているお酒の名前を、データベースのお酒と照合する
+ *
+ * 同じお酒に何度も一致したときは、最初の1件だけを返す。
+ * @summary Match Menu
+ */
+export const matchMenu = async (
+  menuMatchRequest: MenuMatchRequest,
+  options?: RequestInit,
+): Promise<matchMenuResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  const res = await fetch(getMatchMenuUrl(), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(menuMatchRequest),
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: matchMenuResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as matchMenuResponse;
+};
+
+export type recommendResponse200 = {
+  data: RecommendResponse;
+  status: 200;
+};
+
+export type recommendResponse422 = {
+  data: void;
+  status: 422;
+};
+
+export type recommendResponse503 = {
+  data: void;
+  status: 503;
+};
+
+export type recommendResponseSuccess = recommendResponse200 & {
+  headers: Headers;
+};
+export type recommendResponseError = (
+  | recommendResponse422
+  | recommendResponse503
+) & {
+  headers: Headers;
+};
+
+export type recommendResponse =
+  | recommendResponseSuccess
+  | recommendResponseError;
+
+export const getRecommendUrl = () => {
+  return `${API_BASE_URL}/recommendations`;
+};
+
+/**
+ * 入力文（味の希望や気分）に合うお酒を、一致度の高い順に上位5件返す
+ *
+ * `cocktail_ids` を渡すと、その中からだけ選ぶ（メニューの写真から照合したお酒など）。
+ * 省略すると、データベース全体から選ぶ。一致度は入力文とお酒の説明文のコサイン類似度。
+ * おすすめを返せたときは、入力文を店舗向けの集計のために記録する（誰が入力したかは記録しない）。
+ * @summary Recommend
+ */
+export const recommend = async (
+  recommendRequest: RecommendRequest,
+  options?: RequestInit,
+): Promise<recommendResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  const res = await fetch(getRecommendUrl(), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(recommendRequest),
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: recommendResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as recommendResponse;
+};
+
+export type addFavoriteResponse200 = {
+  data: FavoriteStatus;
+  status: 200;
+};
+
+export type addFavoriteResponse404 = {
+  data: void;
+  status: 404;
+};
+
+export type addFavoriteResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type addFavoriteResponseSuccess = addFavoriteResponse200 & {
+  headers: Headers;
+};
+export type addFavoriteResponseError = (
+  | addFavoriteResponse404
+  | addFavoriteResponse422
+) & {
+  headers: Headers;
+};
+
+export type addFavoriteResponse =
+  | addFavoriteResponseSuccess
+  | addFavoriteResponseError;
+
+export const getAddFavoriteUrl = () => {
+  return `${API_BASE_URL}/favorites`;
+};
+
+/**
+ * お気に入りに登録する（登録済みなら何もしない）
+ * @summary Add Favorite
+ */
+export const addFavorite = async (
+  favoriteRequest: FavoriteRequest,
+  options?: RequestInit,
+): Promise<addFavoriteResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  const res = await fetch(getAddFavoriteUrl(), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(favoriteRequest),
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: addFavoriteResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as addFavoriteResponse;
+};
+
+export type listFavoritesResponse200 = {
+  data: Cocktail[];
+  status: 200;
+};
+
+export type listFavoritesResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type listFavoritesResponseSuccess = listFavoritesResponse200 & {
+  headers: Headers;
+};
+export type listFavoritesResponseError = listFavoritesResponse422 & {
+  headers: Headers;
+};
+
+export type listFavoritesResponse =
+  | listFavoritesResponseSuccess
+  | listFavoritesResponseError;
+
+export const getListFavoritesUrl = (params: ListFavoritesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `${API_BASE_URL}/favorites?${stringifiedParams}`
+    : `${API_BASE_URL}/favorites`;
+};
+
+/**
+ * 端末のお気に入りのお酒（新しく登録した順）
+ * @summary List Favorites
+ */
+export const listFavorites = async (
+  params: ListFavoritesParams,
+  options?: RequestInit,
+): Promise<listFavoritesResponse> => {
+  const res = await fetch(getListFavoritesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listFavoritesResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as listFavoritesResponse;
+};
+
+export type removeFavoriteResponse200 = {
+  data: FavoriteStatus;
+  status: 200;
+};
+
+export type removeFavoriteResponse404 = {
+  data: void;
+  status: 404;
+};
+
+export type removeFavoriteResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type removeFavoriteResponseSuccess = removeFavoriteResponse200 & {
+  headers: Headers;
+};
+export type removeFavoriteResponseError = (
+  | removeFavoriteResponse404
+  | removeFavoriteResponse422
+) & {
+  headers: Headers;
+};
+
+export type removeFavoriteResponse =
+  | removeFavoriteResponseSuccess
+  | removeFavoriteResponseError;
+
+export const getRemoveFavoriteUrl = (
+  cocktailId: string,
+  params: RemoveFavoriteParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `${API_BASE_URL}/favorites/${cocktailId}?${stringifiedParams}`
+    : `${API_BASE_URL}/favorites/${cocktailId}`;
+};
+
+/**
+ * お気に入りから外す（未登録なら何もしない）
+ * @summary Remove Favorite
+ */
+export const removeFavorite = async (
+  cocktailId: string,
+  params: RemoveFavoriteParams,
+  options?: RequestInit,
+): Promise<removeFavoriteResponse> => {
+  const res = await fetch(getRemoveFavoriteUrl(cocktailId, params), {
+    ...options,
+    method: "DELETE",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: removeFavoriteResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as removeFavoriteResponse;
+};
+
+export type listFavoriteCountsResponse200 = {
+  data: FavoriteCount[];
+  status: 200;
+};
+
+export type listFavoriteCountsResponseSuccess =
+  listFavoriteCountsResponse200 & {
+    headers: Headers;
+  };
+
+export type listFavoriteCountsResponse = listFavoriteCountsResponseSuccess;
+
+export const getListFavoriteCountsUrl = () => {
+  return `${API_BASE_URL}/favorites/counts`;
+};
+
+/**
+ * お気に入りの総数が多い順のお酒（1件以上のもの）
+ * @summary List Favorite Counts
+ */
+export const listFavoriteCounts = async (
+  options?: RequestInit,
+): Promise<listFavoriteCountsResponse> => {
+  const res = await fetch(getListFavoriteCountsUrl(), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listFavoriteCountsResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as listFavoriteCountsResponse;
+};
+
+export type listPopularQueriesResponse200 = {
+  data: QueryCount[];
+  status: 200;
+};
+
+export type listPopularQueriesResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type listPopularQueriesResponseSuccess =
+  listPopularQueriesResponse200 & {
+    headers: Headers;
+  };
+export type listPopularQueriesResponseError = listPopularQueriesResponse422 & {
+  headers: Headers;
+};
+
+export type listPopularQueriesResponse =
+  | listPopularQueriesResponseSuccess
+  | listPopularQueriesResponseError;
+
+export const getListPopularQueriesUrl = (params?: ListPopularQueriesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `${API_BASE_URL}/store/queries?${stringifiedParams}`
+    : `${API_BASE_URL}/store/queries`;
+};
+
+/**
+ * よく求められた味（おすすめで入力された文）を、回数の多い順に返す
+ *
+ * 店舗向けの集計。全角半角と空白の違いはそろえて数える。回数が同じなら最近入力された順。
+ * @summary List Popular Queries
+ */
+export const listPopularQueries = async (
+  params?: ListPopularQueriesParams,
+  options?: RequestInit,
+): Promise<listPopularQueriesResponse> => {
+  const res = await fetch(getListPopularQueriesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listPopularQueriesResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as listPopularQueriesResponse;
+};
 
 export type healthResponse200 = {
   data: Health200;
