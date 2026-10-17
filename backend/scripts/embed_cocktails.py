@@ -15,16 +15,15 @@ from pydantic import BaseModel, TypeAdapter
 
 from app import embedding, gemini
 from app.data_files import (
-    BASE_RECORDS,
     BASES_EMBEDDED_PATH,
     BASES_SOURCE_PATH,
     EMBEDDED_PATH,
-    RECORDS,
     SOURCE_PATH,
     BaseRecord,
     CocktailRecord,
     read_base_records,
     read_records,
+    write_records,
 )
 
 # 無料枠の回数制限（1分あたりの件数）を超えないよう、間隔を空けて少しずつ送る。
@@ -82,11 +81,11 @@ def fill_vectors[R: (CocktailRecord, BaseRecord)](
 def main() -> None:
     cocktails = read_records(SOURCE_PATH)
     fill_vectors("カクテル", cocktails, read_previous(EMBEDDED_PATH))
-    EMBEDDED_PATH.write_bytes(RECORDS.dump_json(cocktails) + b"\n")
+    write_records(EMBEDDED_PATH, cocktails)
 
     bases = read_base_records(BASES_SOURCE_PATH)
     fill_vectors("ベース", bases, read_previous(BASES_EMBEDDED_PATH))
-    BASES_EMBEDDED_PATH.write_bytes(BASE_RECORDS.dump_json(bases) + b"\n")
+    write_records(BASES_EMBEDDED_PATH, bases)
 
     print(f"{EMBEDDED_PATH} と {BASES_EMBEDDED_PATH} を生成しました")
     print(f"（{embedding.MODEL}, {embedding.DIMENSIONS} 次元）")

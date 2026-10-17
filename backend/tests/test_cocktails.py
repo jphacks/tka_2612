@@ -13,6 +13,7 @@ from app.cocktail_db import (
     COCKTAILS_BY_ID,
     VECTORS,
 )
+from app.data_files import BASES_EMBEDDED_PATH, EMBEDDED_PATH
 from app.main import app
 from app.schemas import Cocktail
 
@@ -55,6 +56,21 @@ class TestBaseData(unittest.TestCase):
 
     def test_only_non_alcoholic_without_base(self) -> None:
         self.assertEqual(sum(1 for c in COCKTAILS if not c.bases), 18)
+
+
+class TestDataFileFormat(unittest.TestCase):
+    """ベクトル付きのファイルは1件1行（差分を変えた件の行だけにするため）"""
+
+    def test_one_record_per_line(self) -> None:
+        for path, count in [
+            (EMBEDDED_PATH, len(COCKTAILS)),
+            (BASES_EMBEDDED_PATH, len(BASES)),
+        ]:
+            with self.subTest(path=path.name):
+                lines = path.read_text(encoding="utf-8").splitlines()
+                self.assertEqual(lines[0], "[")
+                self.assertEqual(lines[-1], "]")
+                self.assertEqual(len(lines), count + 2)
 
 
 class TestCocktails(unittest.TestCase):

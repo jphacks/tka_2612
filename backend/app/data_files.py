@@ -8,7 +8,7 @@
 
 from pathlib import Path
 
-from pydantic import TypeAdapter
+from pydantic import BaseModel, TypeAdapter
 
 from app.schemas import BaseSpirit, Cocktail
 
@@ -43,3 +43,13 @@ def read_records(path: Path) -> list[CocktailRecord]:
 def read_base_records(path: Path) -> list[BaseRecord]:
     """ベースのデータファイルを読み、型を検証して返す"""
     return BASE_RECORDS.validate_json(path.read_bytes())
+
+
+def write_records[R: BaseModel](path: Path, records: list[R]) -> None:
+    """JSON の配列として、1件を1行で書き出す
+
+    1件を1行にするのは、データを変えたときの Git の差分を、変えた件の行だけにするため
+    （全体を1行にすると、どこを変えてもファイル全体が差分になる）。
+    """
+    lines = [r.model_dump_json() for r in records]
+    path.write_text("[\n" + ",\n".join(lines) + "\n]\n", encoding="utf-8")

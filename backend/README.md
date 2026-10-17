@@ -99,6 +99,7 @@ make dev
 
 元データ（`data/cocktails_source.json`・`data/bases_source.json`）を変えたら、`backend/` で次を実行し、ベクトル付きのファイルも一緒にコミットする。
 名前と説明文が変わっていないお酒は前回のベクトルを使い回すので、Gemini に送るのは変えた分だけになる。
+ベクトル付きのファイルは1件1行の JSON で書き出すので、Git の差分は変えた件の行だけになる（GitHub の PR では生成物として折りたたまれる）。
 
 ```sh
 make embed
