@@ -18,3 +18,10 @@ dev = [
     "ruff>=0.17.1",
     "ty>=0.0.89",
 ]
+
+[tool.ruff.lint]
+# typing モジュールと Any 型は使わない（クライアントの要望）
+extend-select = ["ANN401", "TID251"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"typing".msg = "typing は使わない（クライアントの要望）。組み込みの型や pydantic で書く"

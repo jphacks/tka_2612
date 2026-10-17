@@ -6,7 +6,130 @@
  */
 import { API_BASE_URL } from "./config";
 
+/**
+ * お酒の情報（ベクトルは API では返さない）
+ */
+export interface Cocktail {
+  /** お酒のID */
+  id: string;
+  /** お酒の名前（日本語） */
+  name: string;
+  /** 照合用の別名（英名・表記ゆれなど） */
+  aliases: string[];
+  /** 味・香り、度数の目安、合う場面・気分の説明文 */
+  description: string;
+  /** 材料 */
+  ingredients: string[];
+}
+
+export type ValidationErrorCtx = { [key: string]: unknown };
+
+export interface ValidationError {
+  loc: (string | number)[];
+  msg: string;
+  type: string;
+  input?: unknown;
+  ctx?: ValidationErrorCtx;
+}
+
+export interface HTTPValidationError {
+  detail?: ValidationError[];
+}
+
 export type Health200 = { [key: string]: string };
+
+export type listCocktailsResponse200 = {
+  data: Cocktail[];
+  status: 200;
+};
+
+export type listCocktailsResponseSuccess = listCocktailsResponse200 & {
+  headers: Headers;
+};
+
+export type listCocktailsResponse = listCocktailsResponseSuccess;
+
+export const getListCocktailsUrl = () => {
+  return `${API_BASE_URL}/cocktails`;
+};
+
+/**
+ * 登録されているお酒の一覧
+ * @summary List Cocktails
+ */
+export const listCocktails = async (
+  options?: RequestInit,
+): Promise<listCocktailsResponse> => {
+  const res = await fetch(getListCocktailsUrl(), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listCocktailsResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as listCocktailsResponse;
+};
+
+export type getCocktailResponse200 = {
+  data: Cocktail;
+  status: 200;
+};
+
+export type getCocktailResponse404 = {
+  data: void;
+  status: 404;
+};
+
+export type getCocktailResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type getCocktailResponseSuccess = getCocktailResponse200 & {
+  headers: Headers;
+};
+export type getCocktailResponseError = (
+  | getCocktailResponse404
+  | getCocktailResponse422
+) & {
+  headers: Headers;
+};
+
+export type getCocktailResponse =
+  | getCocktailResponseSuccess
+  | getCocktailResponseError;
+
+export const getGetCocktailUrl = (cocktailId: string) => {
+  return `${API_BASE_URL}/cocktails/${cocktailId}`;
+};
+
+/**
+ * お酒の詳細
+ * @summary Get Cocktail
+ */
+export const getCocktail = async (
+  cocktailId: string,
+  options?: RequestInit,
+): Promise<getCocktailResponse> => {
+  const res = await fetch(getGetCocktailUrl(cocktailId), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getCocktailResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as getCocktailResponse;
+};
 
 export type healthResponse200 = {
   data: Health200;
