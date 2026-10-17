@@ -2,6 +2,17 @@
 
 FastAPI で作ったバックエンド。Python と依存ライブラリは uv で管理する。
 
+## Gemini の API キー
+
+写真の読み取りなどで Gemini API を使う。Google AI Studio（https://aistudio.google.com/apikey）でキーを発行し、
+`backend/.env` に書く（`.env` はコミットしない）。`make dev` で自動的に読み込まれる。
+
+```sh
+cp .env.example .env   # GEMINI_API_KEY を書く
+```
+
+無料枠には1分あたりの回数制限があり、超えると API は 503 を返す。
+
 ## 開発サーバーの起動
 
 `backend/` で実行する。
@@ -19,6 +30,7 @@ make dev
 | --- | --- | --- |
 | GET | `/cocktails` | お酒の一覧 |
 | GET | `/cocktails/{cocktail_id}` | お酒の詳細 |
+| POST | `/menu/scan` | メニューの写真から、お酒の名前を AI（Gemini）で読み取る |
 | POST | `/menu/match` | メニューのお酒の名前を、データベースのお酒と照合する |
 
 詳細は Swagger UI か `openapi.json` を参照。
@@ -33,6 +45,11 @@ make dev
 お酒の一覧は Wikipedia の「[カクテルの一覧](https://ja.wikipedia.org/wiki/カクテルの一覧)」に載っている498件（ノンアルコール含む）に、
 一覧にない日本のバー・居酒屋の定番（レモンサワー、カシスウーロンなど）24件を加えたもの。
 材料は各記事を参考にし、説明文（味・香り、度数の目安、合う場面・気分）は独自に書いた（Wikipedia の文章は使っていない）。
+
+### メニューの写真の読み取り
+
+`POST /menu/scan` は、写真を Gemini（`gemini-3.8-flash`）に渡し、載っているお酒の名前だけを一覧で返させる。
+返ってきた名前を `POST /menu/match` に渡すと、データベースのお酒と照合できる。
 
 ### メニューの名前の照合
 

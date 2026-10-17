@@ -1,8 +1,11 @@
 .PHONY: dev gen-api check test
 
+# .env があれば読み込む（GEMINI_API_KEY など）
+ENV_FILE := $(if $(wildcard .env),--env-file .env)
+
 # 開発サーバーを起動する（http://localhost:8000）
 dev:
-	uv run fastapi dev
+	uv run $(ENV_FILE) fastapi dev
 
 # FastAPI のアプリから openapi.json を生成する
 gen-api:
