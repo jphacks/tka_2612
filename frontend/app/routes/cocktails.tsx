@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { SiteFooter, SiteHeader } from "~/components/site-chrome";
-import { recommendCocktails } from "~/data/cocktails";
+import { baseTags, cardColor, englishName } from "~/lib/cocktail-display";
 import {
   loadRecommendationSession,
   type RecommendationSession,
 } from "~/lib/recommendation-session";
+import {
+  getRecommendationResults,
+  type RecommendationResults,
+} from "~/lib/recommendations";
 import type { Route } from "./+types/cocktails";
 
 export function meta(_: Route.MetaArgs) {
@@ -21,24 +25,37 @@ export function meta(_: Route.MetaArgs) {
 export default function Cocktails() {
   const [session, setSession] = useState<RecommendationSession | null>(null);
   const [loadError, setLoadError] = useState("");
+  const [result, setResult] = useState<RecommendationResults | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
+    let currentSession: RecommendationSession | null;
     try {
-      setSession(loadRecommendationSession());
+      currentSession = loadRecommendationSession();
     } catch {
       setLoadError(
         "検索情報を読み取れませんでした。ホームからもう一度検索してください。",
       );
-    } finally {
       setIsLoaded(true);
+      return;
     }
-  }, []);
+    setSession(currentSession);
+    if (!currentSession) {
+      setIsLoaded(true);
+      return;
+    }
 
-  const result = recommendCocktails(
-    session?.query ?? "",
-    session?.recognizedMenuItems ?? null,
-  );
+    getRecommendationResults(currentSession)
+      .then(setResult)
+      .catch((error: unknown) => {
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : "おすすめを取得できませんでした。",
+        );
+      })
+      .finally(() => setIsLoaded(true));
+  }, []);
 
   return (
     <main className="site-shell">
@@ -84,7 +101,7 @@ export default function Cocktails() {
             </Link>
           </div>
         )}
-        {session && (
+        {session && result && (
           <>
             <div className="catalog-note">
               <span className="catalog-note-icon" aria-hidden="true">
@@ -94,7 +111,7 @@ export default function Cocktails() {
                 {session.menuImage
                   ? result.source === "menu"
                     ? "写真から認識したメニュー掲載酒を、気分に合う順に表示しています。"
-                    : "メニュー内のカクテルを特定できなかったため、全カタログから表示しています。"
+                    : "メニュー内のお酒を特定できなかったため、全カタログから表示しています。"
                   : "メニュー画像がないため、全カタログからおすすめを表示しています。"}
                 <span>
                   {session.menuImage
@@ -124,7 +141,7 @@ export default function Cocktails() {
                   to={`/cocktails/${cocktail.id}`}
                 >
                   <div
-                    className={`cocktail-art cocktail-art-${cocktail.color}`}
+                    className={`cocktail-art cocktail-art-${cardColor(cocktail)}`}
                     aria-hidden="true"
                   >
                     <span className="cocktail-number">0{index + 1}</span>
@@ -133,13 +150,13 @@ export default function Cocktails() {
                     </span>
                   </div>
                   <div className="cocktail-info">
-                    <p className="cocktail-english">{cocktail.englishName}</p>
+                    <p className="cocktail-english">{englishName(cocktail)}</p>
                     <h2>{cocktail.name}</h2>
                     <p className="cocktail-description">
                       {cocktail.description}
                     </p>
                     <div className="cocktail-tags">
-                      {cocktail.tags.map((tag) => (
+                      {baseTags(cocktail).map((tag) => (
                         <span key={tag}>{tag}</span>
                       ))}
                     </div>
