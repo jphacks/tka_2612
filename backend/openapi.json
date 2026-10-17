@@ -170,6 +170,44 @@
         }
       }
     },
+    "/recommendations": {
+      "post": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Recommend",
+        "description": "入力文（味の希望や気分）に合うお酒を、一致度の高い順に上位5件返す\n\n`cocktail_ids` を渡すと、その中からだけ選ぶ（メニューの写真から照合したお酒など）。\n省略すると、データベース全体から選ぶ。一致度は入力文とお酒の説明文のコサイン類似度。",
+        "operationId": "recommend",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "存在しないお酒のIDが含まれている"
+          },
+          "503": {
+            "description": "Gemini が使えない（API キー未設定・回数制限など）"
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -350,6 +388,82 @@
         ],
         "title": "MenuScanResponse",
         "description": "メニューの写真から読み取った結果"
+      },
+      "RecommendRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Query",
+            "description": "味の希望や、シーン・気分を表す文（例: 甘くてフルーティ、失恋を支えてくれるお酒）"
+          },
+          "cocktail_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cocktail Ids",
+            "description": "候補にするお酒のID（メニューの写真から照合したものなど）。省略するとデータベース全体から選ぶ"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "RecommendRequest",
+        "description": "おすすめのリクエスト"
+      },
+      "RecommendResponse": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query",
+            "description": "入力文"
+          },
+          "recommendations": {
+            "items": {
+              "$ref": "#/components/schemas/Recommendation"
+            },
+            "type": "array",
+            "title": "Recommendations",
+            "description": "一致度の高い順のおすすめ（上位5件まで）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "recommendations"
+        ],
+        "title": "RecommendResponse",
+        "description": "おすすめの結果"
+      },
+      "Recommendation": {
+        "properties": {
+          "cocktail": {
+            "$ref": "#/components/schemas/Cocktail"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "description": "一致度（入力文とお酒の説明文のコサイン類似度）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cocktail",
+          "score"
+        ],
+        "title": "Recommendation",
+        "description": "おすすめ1件"
       },
       "ValidationError": {
         "properties": {

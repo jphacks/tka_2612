@@ -1,4 +1,4 @@
-.PHONY: dev gen-api check test
+.PHONY: dev gen-api embed check test
 
 # .env があれば読み込む（GEMINI_API_KEY など）
 ENV_FILE := $(if $(wildcard .env),--env-file .env)
@@ -10,6 +10,10 @@ dev:
 # FastAPI のアプリから openapi.json を生成する
 gen-api:
 	uv run python -m scripts.gen_openapi
+
+# お酒の元データにベクトルを付けて data/cocktails.json を作る（変わった分だけ Gemini に送る）
+embed:
+	uv run $(ENV_FILE) python -m scripts.embed_cocktails
 
 # リント・フォーマット・型をチェックする
 check:

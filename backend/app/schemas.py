@@ -44,3 +44,34 @@ class MenuScanResponse(BaseModel):
     names: list[str] = Field(
         description="メニューに載っているお酒の名前（載っている順、重複なし）"
     )
+
+
+class RecommendRequest(BaseModel):
+    """おすすめのリクエスト"""
+
+    query: str = Field(
+        min_length=1,
+        max_length=500,
+        description="味の希望や、シーン・気分を表す文（例: 甘くてフルーティ、失恋を支えてくれるお酒）",
+    )
+    cocktail_ids: list[str] | None = Field(
+        default=None,
+        max_length=200,
+        description="候補にするお酒のID（メニューの写真から照合したものなど）。省略するとデータベース全体から選ぶ",
+    )
+
+
+class Recommendation(BaseModel):
+    """おすすめ1件"""
+
+    cocktail: Cocktail
+    score: float = Field(description="一致度（入力文とお酒の説明文のコサイン類似度）")
+
+
+class RecommendResponse(BaseModel):
+    """おすすめの結果"""
+
+    query: str = Field(description="入力文")
+    recommendations: list[Recommendation] = Field(
+        description="一致度の高い順のおすすめ（上位5件まで）"
+    )
