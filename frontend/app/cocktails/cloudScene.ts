@@ -1,5 +1,8 @@
-import { BASES } from "./mock";
-import type { Cocktail, Vec2 } from "./types";
+import { BASES } from "./bases";
+import type { Vec2 } from "./types";
+
+// 点として描くのに必要なお酒の情報
+export type PointInfo = { id: string; name: string; base: string };
 
 // 関連度がないとき（検索していないとき）の濃さ・大きさ
 const IDLE_RELEVANCE = 0.55;
@@ -31,7 +34,7 @@ const PINNED_LABEL_FONT = `600 ${LABEL_FONT}`;
 
 // 表示するカクテルと、UMAP で求めた2次元座標
 export type Layout = {
-  cocktails: Cocktail[];
+  cocktails: PointInfo[];
   positions: Vec2[];
   // cocktails と同じ並びの関連度（0〜1）。検索していなければ null
   relevance: Float32Array | null;
@@ -40,10 +43,10 @@ export type Layout = {
 export type CloudScene = {
   // 表示する点を入れ替え、全体が見えるように表示し直す
   setLayout(layout: Layout): void;
-  setSelected(id: number | null): void;
-  setBestMatch(id: number | null): void;
+  setSelected(id: string | null): void;
+  setBestMatch(id: string | null): void;
   // zoomIn が true なら点に近づき、false なら点が隠れているときだけ中心に移す
-  flyTo(id: number, zoomIn: boolean): void;
+  flyTo(id: string, zoomIn: boolean): void;
   dispose(): void;
 };
 
@@ -56,7 +59,7 @@ type Rect = { x: number; y: number; w: number; h: number };
 
 export function createCloudScene(
   container: HTMLElement,
-  onPick: (id: number | null) => void,
+  onPick: (id: string | null) => void,
 ): CloudScene {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
@@ -71,12 +74,12 @@ export function createCloudScene(
   );
 
   // 表示中の点
-  let cocktails: Cocktail[] = [];
+  let cocktails: PointInfo[] = [];
   let xs: number[] = [];
   let ys: number[] = [];
   let colors: string[] = [];
   let relevance: Float32Array = new Float32Array(0);
-  let indexById = new Map<number, number>();
+  let indexById = new Map<string, number>();
   // 関連度の低い点から描き、関連度の高い点を上に重ねる
   let drawOrder: number[] = [];
   let bounds = { minX: -1, maxX: 1, minY: -1, maxY: 1 };
@@ -87,14 +90,14 @@ export function createCloudScene(
   // 全体表示のときの、データ座標 1 あたりのピクセル数
   let fitScale = 1;
   const view: View = { x: 0, y: 0, zoom: 1 };
-  let selectedId: number | null = null;
-  let bestId: number | null = null;
+  let selectedId: string | null = null;
+  let bestId: string | null = null;
   let hoveredIndex = -1;
   let flight: Flight | null = null;
   let fadeStartedAt = Number.NEGATIVE_INFINITY;
   let dirty = true;
 
-  const indexOf = (id: number | null) =>
+  const indexOf = (id: string | null) =>
     id === null ? -1 : (indexById.get(id) ?? -1);
   const scale = () => fitScale * view.zoom;
   const originY = () => height * (0.5 - VIEW_SHIFT_UP);

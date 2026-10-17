@@ -1,17 +1,17 @@
 import { useEffect, useRef } from "react";
 import { type CloudScene, createCloudScene, type Layout } from "./cloudScene";
 
-export type FocusRequest = { id: number; zoomIn: boolean; key: number };
+export type FocusRequest = { id: string; zoomIn: boolean; key: number };
 
 type Props = {
   // null のあいだは何も描かない（UMAP の計算中など）
   layout: Layout | null;
-  selectedId: number | null;
+  selectedId: string | null;
   // 検索で最も一致したカクテル。この点だけ色を変える
-  bestMatchId: number | null;
+  bestMatchId: string | null;
   // key を変えると同じ点にもう一度近づく
   focus: FocusRequest | null;
-  onSelect: (id: number | null) => void;
+  onSelect: (id: string | null) => void;
 };
 
 export function CocktailCloud({
