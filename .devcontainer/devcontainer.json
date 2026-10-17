@@ -9,7 +9,7 @@
     },
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
-  "forwardPorts": [5173],
+  "forwardPorts": [5173, 8000],
   "containerEnv": {
     "UV_LINK_MODE": "copy"
   },
