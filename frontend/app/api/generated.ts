@@ -79,6 +79,39 @@ export interface MenuScanResponse {
   names: string[];
 }
 
+/**
+ * おすすめのリクエスト
+ */
+export interface RecommendRequest {
+  /**
+   * 味の希望や、シーン・気分を表す文（例: 甘くてフルーティ、失恋を支えてくれるお酒）
+   * @minLength 1
+   * @maxLength 500
+   */
+  query: string;
+  /** 候補にするお酒のID（メニューの写真から照合したものなど）。省略するとデータベース全体から選ぶ */
+  cocktail_ids?: string[] | null;
+}
+
+/**
+ * おすすめ1件
+ */
+export interface Recommendation {
+  cocktail: Cocktail;
+  /** 一致度（入力文とお酒の説明文のコサイン類似度） */
+  score: number;
+}
+
+/**
+ * おすすめの結果
+ */
+export interface RecommendResponse {
+  /** 入力文 */
+  query: string;
+  /** 一致度の高い順のおすすめ（上位5件まで） */
+  recommendations: Recommendation[];
+}
+
 export type Health200 = { [key: string]: string };
 
 export type listCocktailsResponse200 = {
@@ -316,6 +349,91 @@ export const matchMenu = async (
     status: res.status,
     headers: res.headers,
   } as matchMenuResponse;
+};
+
+export type recommendResponse200 = {
+  data: RecommendResponse;
+  status: 200;
+};
+
+export type recommendResponse422 = {
+  data: void;
+  status: 422;
+};
+
+export type recommendResponse503 = {
+  data: void;
+  status: 503;
+};
+
+export type recommendResponseSuccess = recommendResponse200 & {
+  headers: Headers;
+};
+export type recommendResponseError = (
+  | recommendResponse422
+  | recommendResponse503
+) & {
+  headers: Headers;
+};
+
+export type recommendResponse =
+  | recommendResponseSuccess
+  | recommendResponseError;
+
+export const getRecommendUrl = () => {
+  return `${API_BASE_URL}/recommendations`;
+};
+
+/**
+ * 入力文（味の希望や気分）に合うお酒を、一致度の高い順に上位5件返す
+ *
+ * `cocktail_ids` を渡すと、その中からだけ選ぶ（メニューの写真から照合したお酒など）。
+ * 省略すると、データベース全体から選ぶ。一致度は入力文とお酒の説明文のコサイン類似度。
+ * @summary Recommend
+ */
+export const recommend = async (
+  recommendRequest: RecommendRequest,
+  options?: RequestInit,
+): Promise<recommendResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  const res = await fetch(getRecommendUrl(), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(recommendRequest),
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: recommendResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as recommendResponse;
 };
 
 export type healthResponse200 = {
