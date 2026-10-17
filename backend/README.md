@@ -2,6 +2,17 @@
 
 FastAPI で作ったバックエンド。Python と依存ライブラリは uv で管理する。
 
+## Gemini の API キー
+
+おすすめ（入力文のベクトル化）で Gemini API を使う。Google AI Studio（https://aistudio.google.com/apikey）でキーを発行し、
+`backend/.env` に書く（`.env` はコミットしない）。`make dev` で自動的に読み込まれる。
+
+```sh
+cp .env.example .env   # GEMINI_API_KEY を書く
+```
+
+無料枠には1分あたりの回数制限があり、超えると API は 503 を返す。
+
 ## 開発サーバーの起動
 
 `backend/` で実行する。
@@ -20,6 +31,7 @@ make dev
 | GET | `/cocktails` | お酒の一覧 |
 | GET | `/cocktails/{cocktail_id}` | お酒の詳細 |
 | POST | `/menu/match` | メニューのお酒の名前を、データベースのお酒と照合する |
+| POST | `/recommendations` | 入力文（味・気分）に合うお酒を上位5件返す。候補をメニュー内に絞れる |
 
 詳細は Swagger UI か `openapi.json` を参照。
 
@@ -38,6 +50,23 @@ make dev
 
 `POST /menu/match` は、名前と別名の表記ゆれ（中黒・長音・全角半角・大文字小文字・価格・括弧の補足）をそろえて完全一致を探し、
 なければ `difflib` のあいまい一致（類似度 0.8 以上）で探す。どれにも一致しない名前は `unregistered` に入る。
+
+### おすすめ
+
+`POST /recommendations` は、入力文を Gemini（`gemini-embedding-2`）でベクトルにし、お酒の説明文のベクトルとの
+コサイン類似度の高い順に5件返す。`cocktail_ids` に `/menu/match` で照合したお酒のIDを渡すと、メニュー内のお酒だけから選ぶ。
+同じ入力文のベクトルはメモリに保持して再利用する（無料枠の節約。サーバーを再起動すると消える）。
+
+写真を使う流れ: 写真からお酒の名前を読み取るのはフロントエンドで行う → `/menu/match`（名前 → お酒のID）→ `/recommendations`（ID と入力文 → おすすめ）
+
+### ベクトルの作り直し
+
+元データ（`data/cocktails_source.json`）を変えたら、`backend/` で次を実行し、`data/cocktails.json` も一緒にコミットする。
+名前と説明文が変わっていないお酒は前回のベクトルを使い回すので、Gemini に送るのは変えた分だけになる。
+
+```sh
+make embed
+```
 
 ## openapi.json の生成
 
