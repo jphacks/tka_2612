@@ -4,7 +4,7 @@ FastAPI で作ったバックエンド。Python と依存ライブラリは uv �
 
 ## Gemini の API キー
 
-おすすめ（入力文のベクトル化）で Gemini API を使う。Google AI Studio（https://aistudio.google.com/apikey）でキーを発行し、
+おすすめ・検索（入力文のベクトル化）と、メニューの写真の読み取りで Gemini API を使う。Google AI Studio（https://aistudio.google.com/apikey）でキーを発行し、
 `backend/.env` に書く（`.env` はコミットしない）。`make dev` で自動的に読み込まれる。
 
 ```sh
@@ -12,6 +12,8 @@ cp .env.example .env   # GEMINI_API_KEY を書く
 ```
 
 無料枠には1分あたりの回数制限があり、超えると API は 503 を返す。
+
+ブラウザのフロントエンドから呼べるよう、CORS で `http://localhost:5173` を許可している。別のオリジンから呼ぶときは、`.env` の `CORS_ORIGINS`（カンマ区切り）で指定する。
 
 ## 開発サーバーの起動
 
@@ -31,6 +33,7 @@ make dev
 | GET | `/cocktails` | お酒の一覧 |
 | GET | `/cocktails/{cocktail_id}` | お酒の詳細 |
 | POST | `/cocktails/search` | 入力文をベクトル化し、ベクトルが近い順にお酒を100件返す |
+| POST | `/menu/scan` | メニューの写真から、お酒の名前と写真上の位置を AI（Gemini）で読み取る |
 | POST | `/menu/match` | メニューのお酒の名前を、データベースのお酒と照合する |
 | POST | `/recommendations` | 入力文（味・気分）に合うお酒を上位5件返す。候補をメニュー内に絞れる |
 | POST | `/favorites` | お気に入りに登録する（お気に入りの総数を返す） |
@@ -61,6 +64,12 @@ make dev
 一覧で分類されているカクテルはその分類を使い、分類が判別しにくいものと一覧にない24件は、材料から判定した。
 ベースにも説明文を付け、カクテルと同じモデルでベクトル化している（入力文と比べられる）。
 
+### メニューの写真の読み取り
+
+`POST /menu/scan` は、写真を Gemini（`gemini-3.8-flash`）に渡し、載っているお酒の名前と、その名前が書かれている位置を返させる。
+位置は名前の中心を、写真の幅・高さに対する %（0〜100）で返す（読み取れなかったときは null）。
+API キーをブラウザに渡さないため、Gemini はフロントエンドから直接呼ばず、必ずこの API を通す。
+
 ### メニューの名前の照合
 
 `POST /menu/match` は、名前と別名の表記ゆれ（中黒・長音・全角半角・大文字小文字・価格・括弧の補足）をそろえて完全一致を探し、
@@ -72,7 +81,7 @@ make dev
 コサイン類似度の高い順に5件返す。`cocktail_ids` に `/menu/match` で照合したお酒のIDを渡すと、メニュー内のお酒だけから選ぶ。
 同じ入力文のベクトルはメモリに保持して再利用する（無料枠の節約。サーバーを再起動すると消える）。
 
-写真を使う流れ: 写真からお酒の名前を読み取るのはフロントエンドで行う → `/menu/match`（名前 → お酒のID）→ `/recommendations`（ID と入力文 → おすすめ）
+写真を使う流れ: `/menu/scan`（写真 → 名前と位置）→ `/menu/match`（名前 → お酒のID）→ `/recommendations`（ID と入力文 → おすすめ）
 
 ### お気に入り
 
