@@ -47,3 +47,10 @@ def count_favorites() -> Counter[str]:
 
 def query_ranking() -> list[tuple[str, int]]:
     return _queries.most_common()
+
+
+def clear() -> None:
+    """保存内容をすべて消す（テスト用）"""
+    _feedbacks.clear()
+    _favorites.clear()
+    _queries.clear()

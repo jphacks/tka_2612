@@ -39,6 +39,14 @@ make gen-api
 
 API を変更したら生成し直して、一緒にコミットする。
 
+## テスト
+
+`backend/` で実行する。標準ライブラリの unittest で `tests/` のテストを実行する。
+
+```sh
+make test
+```
+
 ## チェック
 
 `backend/` で実行する。ruff（リント・フォーマット）と ty（型）でチェックする。
