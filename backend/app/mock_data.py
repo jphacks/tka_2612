@@ -5,11 +5,11 @@ MOCK_SCORES: list[float] = [0.91, 0.86, 0.79, 0.72, 0.65]
 
 # 写真から読み取れたことにするお酒（登録済み）と未登録のお酒
 MOCK_MENU_COCKTAIL_IDS: list[str] = [
-    "cassis-orange",
+    "cassis-and-orange",
     "pina-colada",
     "cosmopolitan",
     "spumoni",
-    "gin-tonic",
+    "gin-and-tonic",
     "mojito",
 ]
 MOCK_UNREGISTERED: list[str] = ["店長おすすめサワー", "季節のフルーツカクテル"]

@@ -236,12 +236,12 @@ class TestFavorites(ApiTestCase):
 
     def test_add_and_remove(self) -> None:
         self.assertEqual(self.add("mojito"), 204)
-        self.assertEqual(self.add("gin-tonic"), 204)
-        self.assertEqual(self.favorites(), ["gin-tonic", "mojito"])
+        self.assertEqual(self.add("gin-and-tonic"), 204)
+        self.assertEqual(self.favorites(), ["gin-and-tonic", "mojito"])
 
         res = self.client.delete("/favorites/mojito", params={"device_id": "d1"})
         self.assertEqual(res.status_code, 204)
-        self.assertEqual(self.favorites(), ["gin-tonic"])
+        self.assertEqual(self.favorites(), ["gin-and-tonic"])
 
     def test_add_twice(self) -> None:
         self.add("mojito")
@@ -273,12 +273,12 @@ class TestStats(ApiTestCase):
         self.feedback("mojito", "up")
         self.feedback("mojito", "up", device_id="d2")
         self.feedback("mojito", "down")
-        self.feedback("gin-tonic", "up")
+        self.feedback("gin-and-tonic", "up")
 
         cocktails = self.stats()["cocktails"]
         self.assertEqual(
             [(c["cocktail"]["id"], c["up"], c["down"]) for c in cocktails],
-            [("mojito", 2, 1), ("gin-tonic", 1, 0)],
+            [("mojito", 2, 1), ("gin-and-tonic", 1, 0)],
         )
 
     def test_favorites_counted(self) -> None:

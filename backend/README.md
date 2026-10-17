@@ -33,8 +33,11 @@ make dev
 
 | ファイル | 内容 |
 | --- | --- |
-| `data/cocktails_source.json` | 手で書く元データ（名前・別名・説明文・材料） |
+| `data/cocktails_source.json` | 元データ（名前・別名・説明文・材料）。498件 |
 | `data/cocktails.json` | 元データに Gemini（`gemini-embedding-2`、768 次元）のベクトルを付けたもの。生成物 |
+
+お酒の一覧は Wikipedia の「[カクテルの一覧](https://ja.wikipedia.org/wiki/カクテルの一覧)」に載っている498件（ノンアルコール含む）。
+材料は各記事を参考にし、説明文（味・香り、度数の目安、合う場面・気分）は独自に書いた（Wikipedia の文章は使っていない）。
 
 元データを変えたら、`backend/` で次を実行してベクトルを作り直し、一緒にコミットする。
 
