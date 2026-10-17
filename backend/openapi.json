@@ -31,6 +31,32 @@
         }
       }
     },
+    "/cocktails/vectors": {
+      "get": {
+        "tags": [
+          "cocktails"
+        ],
+        "summary": "List Cocktail Vectors",
+        "description": "登録されているお酒のベクトルの一覧（フロントエンドで次元削減して表示する用）",
+        "operationId": "list_cocktail_vectors",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CocktailVector"
+                  },
+                  "type": "array",
+                  "title": "Response List Cocktail Vectors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/cocktails/{cocktail_id}": {
       "get": {
         "tags": [
@@ -597,6 +623,30 @@
         ],
         "title": "Cocktail",
         "description": "お酒の情報（ベクトルは API では返さない）"
+      },
+      "CocktailVector": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "お酒のID"
+          },
+          "vector": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Vector",
+            "description": "説明文の埋め込みベクトル（gemini-embedding-2、768次元）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "vector"
+        ],
+        "title": "CocktailVector",
+        "description": "お酒の説明文の埋め込みベクトル"
       },
       "FavoriteCount": {
         "properties": {

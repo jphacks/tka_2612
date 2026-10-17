@@ -25,6 +25,15 @@ class BaseSpirit(BaseModel):
     description: str = Field(description="味・香り、合う場面の説明文")
 
 
+class CocktailVector(BaseModel):
+    """お酒の説明文の埋め込みベクトル"""
+
+    id: str = Field(description="お酒のID")
+    vector: list[float] = Field(
+        description="説明文の埋め込みベクトル（gemini-embedding-2、768次元）"
+    )
+
+
 class MenuMatchRequest(BaseModel):
     """メニューに載っているお酒の名前"""
 
