@@ -11,6 +11,10 @@
   },
   "forwardPorts": [5173, 8000],
   "postCreateCommand": "git config core.hooksPath .githooks",
+  "postStartCommand": {
+    "backend": "cd backend && uv sync",
+    "frontend": "cd frontend && npm ci"
+  },
   "containerEnv": {
     "UV_LINK_MODE": "copy"
   },
