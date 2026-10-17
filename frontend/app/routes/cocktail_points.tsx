@@ -29,7 +29,7 @@ async function projectAll(
   return { cocktails: points, positions, relevance: null };
 }
 
-// 一致度（コサイン類似度）は差が小さいので、集めた範囲の中で広げて点の濃さ・大きさに使う
+// 一致度（コサイン類似度）は差が小さいので、集めた範囲の中で広げて点の大きさに使う
 function toRelevance(scores: number[]): Float32Array {
   const max = Math.max(...scores);
   const min = Math.min(...scores);
