@@ -526,8 +526,15 @@ textarea:focus-visible,
   clip-path: inset(50%);
 }
 
+.upload-methods {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(125px, 0.42fr);
+  gap: 9px;
+}
+
 .upload-area {
   display: flex;
+  min-width: 0;
   min-height: 108px;
   align-items: center;
   gap: 15px;
@@ -539,6 +546,29 @@ textarea:focus-visible,
   transition:
     border-color 160ms ease,
     background 160ms ease;
+}
+
+.camera-option {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 8px;
+  border: 1px solid #e9e2db;
+  border-radius: 3px;
+  background: #fffdfa;
+  cursor: pointer;
+  text-align: center;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.camera-option:hover {
+  border-color: #bf866f;
+  background: #fbf5ef;
 }
 
 .upload-area:hover {
@@ -569,6 +599,16 @@ textarea:focus-visible,
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.5;
+}
+
+.camera-option .upload-icon {
+  width: 34px;
+  height: 34px;
+}
+
+.camera-option .upload-icon svg {
+  width: 19px;
+  height: 19px;
 }
 
 .upload-copy {
@@ -1630,6 +1670,14 @@ textarea:focus-visible,
   .upload-area {
     gap: 10px;
     padding: 13px;
+  }
+
+  .upload-methods {
+    grid-template-columns: minmax(0, 1fr) 112px;
+  }
+
+  .camera-option {
+    padding-inline: 5px;
   }
 
   .upload-format {

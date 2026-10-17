@@ -194,6 +194,17 @@ export default function Home() {
                 event.currentTarget.value = "";
               }}
             />
+            <input
+              className="file-input"
+              id="menu-camera"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(event) => {
+                selectImage(event.currentTarget.files?.[0]);
+                event.currentTarget.value = "";
+              }}
+            />
             {imageUrl ? (
               <div className="image-preview">
                 <img
@@ -218,31 +229,45 @@ export default function Home() {
                 </button>
               </div>
             ) : (
-              <label
-                className={`upload-area${isDragging ? " is-dragging" : ""}`}
-                htmlFor="menu-photo"
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  setIsDragging(false);
-                  selectImage(event.dataTransfer.files[0]);
-                }}
-              >
-                <span className="upload-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v5h14v-5" />
-                  </svg>
-                </span>
-                <span className="upload-copy">
-                  <strong>写真を選択</strong>
-                  <span>またはここに画像をドロップ</span>
-                </span>
-                <span className="upload-format">JPG・PNG</span>
-              </label>
+              <div className="upload-methods">
+                <label
+                  className={`upload-area${isDragging ? " is-dragging" : ""}`}
+                  htmlFor="menu-photo"
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setIsDragging(false);
+                    selectImage(event.dataTransfer.files[0]);
+                  }}
+                >
+                  <span className="upload-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v5h14v-5" />
+                    </svg>
+                  </span>
+                  <span className="upload-copy">
+                    <strong>写真を選ぶ</strong>
+                    <span>端末内の画像を選択</span>
+                  </span>
+                  <span className="upload-format">JPG・PNG</span>
+                </label>
+                <label className="camera-option" htmlFor="menu-camera">
+                  <span className="upload-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M4 7.5h3l1.5-2h7l1.5 2h3v11H4z" />
+                      <circle cx="12" cy="13" r="3.5" />
+                    </svg>
+                  </span>
+                  <span className="upload-copy">
+                    <strong>その場で撮影</strong>
+                    <span>カメラを起動</span>
+                  </span>
+                </label>
+              </div>
             )}
             {imageError && (
               <p className="field-error" role="alert">
