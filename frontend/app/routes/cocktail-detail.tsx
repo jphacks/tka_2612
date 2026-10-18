@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
 import { type Cocktail, getCocktail } from "~/api/generated";
-import { SiteFooter, SiteHeader } from "~/components/site-chrome";
-import { baseTags, cardColor, englishName } from "~/lib/cocktail-display";
+import { NeonGlass } from "~/components/neon-glass";
+import { SiteHeader } from "~/components/site-chrome";
+import { baseTags, drinkColor, englishName } from "~/lib/cocktail-display";
 import {
   loadFavoriteCount,
   loadFavoriteIds,
@@ -20,7 +21,7 @@ import type { Route } from "./+types/cocktail-detail";
 
 export function meta(_: Route.MetaArgs) {
   return [
-    { title: "お酒の詳細 — SIP" },
+    { title: "一杯 — SIP" },
     {
       name: "description",
       content: "気になる一杯の味わいや材料を詳しく紹介します。",
@@ -111,35 +112,33 @@ export default function CocktailDetail() {
       });
   }, [cocktailId, isFromMap]);
 
+  const backLink = (
+    <Link className="topbar-link" to={back.to}>
+      ← {back.label}
+    </Link>
+  );
+
   if (loadState === "loading") {
     return (
-      <main className="site-shell detail-shell">
-        <SiteHeader showNote={false}>
-          <Link className="topbar-link" to={back.to}>
-            {back.label}に戻る <span aria-hidden="true">↗</span>
-          </Link>
-        </SiteHeader>
-        <p className="detail-page page-message">読み込んでいます…</p>
+      <main className="site-shell">
+        <SiteHeader>{backLink}</SiteHeader>
+        <p className="page page-message">…</p>
       </main>
     );
   }
 
   if (loadState !== "ready" || !cocktail) {
     return (
-      <main className="site-shell detail-shell">
-        <SiteHeader showNote={false}>
-          <Link className="topbar-link" to={back.to}>
-            {back.label}に戻る <span aria-hidden="true">↗</span>
-          </Link>
-        </SiteHeader>
-        <section className="detail-page page-message" role="alert">
-          <h1>
+      <main className="site-shell">
+        <SiteHeader>{backLink}</SiteHeader>
+        <section className="page page-message" role="alert">
+          <p>
             {loadState === "not-found"
               ? "お酒が見つかりませんでした"
-              : "お酒の情報を読み込めませんでした"}
-          </h1>
+              : "読み込めませんでした"}
+          </p>
           <Link className="text-link" to={back.to}>
-            {back.label}に戻る
+            {back.label}へ
           </Link>
         </section>
       </main>
@@ -169,173 +168,87 @@ export default function CocktailDetail() {
       setFavoriteCount(count);
       setFavoriteError("");
     } catch {
-      setFavoriteError("お気に入りを保存できませんでした。");
+      setFavoriteError("お気に入りを保存できませんでした");
     } finally {
       setIsSaving(false);
     }
   }
 
   return (
-    <main className="site-shell detail-shell">
-      <SiteHeader>
-        <Link className="topbar-link" to={back.to}>
-          {back.label}に戻る <span aria-hidden="true">↗</span>
-        </Link>
-      </SiteHeader>
+    <main className="site-shell">
+      <SiteHeader>{backLink}</SiteHeader>
 
-      <article className="detail-page">
-        <div className="detail-breadcrumb">
-          <Link to={back.to}>{back.label}</Link>
-          <span aria-hidden="true">/</span>
-          <span>{cocktail.name}</span>
-          <span className="step-label">
-            <span>03</span> / 03
-          </span>
+      <article className="page detail" aria-labelledby="cocktail-name">
+        <div className="detail-head">
+          <NeonGlass color={drinkColor(cocktail)} className="detail-glass" />
+          <div className="detail-title">
+            <p className="drink-en">{englishName(cocktail)}</p>
+            <h1 className="page-title" id="cocktail-name">
+              {cocktail.name}
+            </h1>
+            <div className="tags">
+              {baseTags(cocktail).map((tag) => (
+                <span key={tag}>{tag}</span>
+              ))}
+            </div>
+          </div>
+          {score !== null && (
+            <p className="score score-lg" title="相性">
+              {Math.round(score * 100)}
+              <small>%</small>
+            </p>
+          )}
         </div>
 
-        <section className="detail-menu-section" aria-labelledby="menu-title">
-          <div className="detail-section-heading">
-            <p className="eyebrow section-eyebrow">ON THE MENU</p>
-            <h1 id="menu-title">メニューで見つけた一杯</h1>
-          </div>
-          {session?.menuImage ? (
-            <figure className="detail-menu-figure">
-              <div className="detail-menu-photo">
-                <img
-                  src={session.menuImage}
-                  alt={
-                    markerPosition
-                      ? `メニュー写真。${cocktail.name}の位置をマークしています。`
-                      : "アップロードしたメニュー写真"
-                  }
-                />
-                {markerPosition && (
-                  <span
-                    className="menu-selection-marker"
-                    style={{
-                      left: `${markerPosition.x}%`,
-                      top: `${markerPosition.y}%`,
-                    }}
-                  >
-                    <span className="marker-pulse" aria-hidden="true" />
-                    <span className="marker-label">{cocktail.name}</span>
-                  </span>
-                )}
-              </div>
-              <figcaption>
-                {session.menuImageName ?? "アップロードしたメニュー写真"}
-                <span>
-                  {markerPosition
-                    ? " AI で読み取った掲載位置をマークしています"
-                    : " この一杯の掲載位置を特定できませんでした"}
-                </span>
-              </figcaption>
-            </figure>
-          ) : (
-            <div className="detail-menu-empty">
-              <div
-                className={`cocktail-art cocktail-art-${cardColor(cocktail)}`}
+        <p className="detail-text">{cocktail.description}</p>
+
+        <ul className="tags tags-ingredients" aria-label="材料">
+          {cocktail.ingredients.map((ingredient) => (
+            <li key={ingredient}>{ingredient}</li>
+          ))}
+        </ul>
+
+        <button
+          className={`fav-button${isFavorite ? " is-favorite" : ""}`}
+          type="button"
+          aria-pressed={isFavorite}
+          aria-label={isFavorite ? "お気に入りから外す" : "お気に入りに追加"}
+          disabled={!isFavoriteReady || isSaving}
+          onClick={toggleFavorite}
+        >
+          <span aria-hidden="true">{isFavorite ? "♥" : "♡"}</span>
+          {favoriteCount ?? ""}
+        </button>
+        {favoriteError && (
+          <p className="page-error" role="alert">
+            {favoriteError}
+          </p>
+        )}
+
+        {session?.menuImage && (
+          <figure className="detail-menu">
+            <img
+              src={session.menuImage}
+              alt={
+                markerPosition
+                  ? `メニュー写真。${cocktail.name}の位置に印を付けています`
+                  : "読み取ったメニューの写真"
+              }
+            />
+            {markerPosition && (
+              <span
+                className="menu-marker"
+                style={{
+                  left: `${markerPosition.x}%`,
+                  top: `${markerPosition.y}%`,
+                }}
                 aria-hidden="true"
-              >
-                <span className="mini-glass">
-                  <span className="mini-drink" />
-                </span>
-              </div>
-              <div>
-                <strong>メニュー写真はありません</strong>
-                <p>今回はお酒のカタログからおすすめしています。</p>
-              </div>
-            </div>
-          )}
-          {sessionError && (
-            <p className="detail-storage-error" role="status">
-              {sessionError}
-            </p>
-          )}
-        </section>
-
-        <section className="detail-copy" aria-labelledby="cocktail-name">
-          <div className="detail-copy-heading">
-            <div>
-              <p className="cocktail-english">{englishName(cocktail)}</p>
-              <h2 id="cocktail-name">{cocktail.name}</h2>
-              <div className="cocktail-tags">
-                {baseTags(cocktail).map((tag) => (
-                  <span key={tag}>{tag}</span>
-                ))}
-              </div>
-            </div>
-            <div className="detail-match">
-              <strong>
-                {score !== null ? Math.round(score * 100) : "—"}
-                {score !== null && <small>%</small>}
-              </strong>
-              <span>あなたとの相性</span>
-            </div>
-          </div>
-
-          <div className="detail-description-block">
-            <div className="detail-description">
-              <p className="eyebrow section-eyebrow">A LITTLE STORY</p>
-              <h3>この一杯について</h3>
-              <p>{cocktail.description}</p>
-            </div>
-            <aside className="detail-ingredients">
-              <p className="eyebrow section-eyebrow">WHAT’S INSIDE</p>
-              <h3>主な材料</h3>
-              <ul>
-                {cocktail.ingredients.map((ingredient) => (
-                  <li key={ingredient}>{ingredient}</li>
-                ))}
-              </ul>
-            </aside>
-          </div>
-
-          <div className="favorite-panel">
-            <div className="favorite-copy">
-              <span className="favorite-star" aria-hidden="true">
-                {isFavorite ? "★" : "☆"}
-              </span>
-              <div>
-                <strong>
-                  {isFavorite
-                    ? "お気に入りに登録しました"
-                    : "この一杯をお気に入りに"}
-                </strong>
-                <p>
-                  {favoriteCount === null
-                    ? "お気に入りの数を読み込んでいます…"
-                    : `${favoriteCount}人がお気に入りに登録しています`}
-                </p>
-              </div>
-            </div>
-            <button
-              className={`favorite-button${isFavorite ? " is-favorite" : ""}`}
-              type="button"
-              aria-pressed={isFavorite}
-              disabled={!isFavoriteReady || isSaving}
-              onClick={toggleFavorite}
-            >
-              <span aria-hidden="true">{isFavorite ? "★" : "☆"}</span>
-              {isFavorite ? "登録済み" : "お気に入り"}
-            </button>
-          </div>
-          {favoriteError && (
-            <p className="detail-storage-error" role="alert">
-              {favoriteError}
-            </p>
-          )}
-
-          <div className="detail-bottom-nav">
-            <Link className="text-link" to={back.to}>
-              ← {back.label}に戻る
-            </Link>
-            {session?.query && <span>「{session.query}」からのおすすめ</span>}
-          </div>
-        </section>
+              />
+            )}
+          </figure>
+        )}
+        {sessionError && <p className="page-error">{sessionError}</p>}
       </article>
-
-      <SiteFooter />
     </main>
   );
 }

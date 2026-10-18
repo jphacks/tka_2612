@@ -1,25 +1,14 @@
 import type { Cocktail } from "~/api/generated";
-import { BASE_NAMES } from "~/cocktails/bases";
+import { BASE_GROUPS, BASE_NAMES, baseGroupOf } from "~/cocktails/bases";
 
-// カードのグラスの色（app.css の .cocktail-art-<色>）。おもなベース（先頭）で決める
-const BASE_COLORS: Record<string, string> = {
-  gin: "blue",
-  vodka: "blue",
-  aquavit: "blue",
-  "other-spirits": "blue",
-  rum: "mint",
-  tequila: "mint",
-  whisky: "coffee",
-  brandy: "coffee",
-  shochu: "coffee",
-  sake: "coffee",
-  wine: "peach",
-  beer: "peach",
-  liqueur: "cassis",
-};
+// ノンアルコールのグラスは、地図の灰色だと沈んで見えるので夕焼け色にする
+const NON_ALCOHOLIC_DRINK_COLOR = "#ff8a5c";
 
-export function cardColor(cocktail: Cocktail): string {
-  return BASE_COLORS[cocktail.bases[0]] ?? "peach";
+// グラスに入ったお酒の色。地図の点と同じく、おもなベース（先頭）の色にする
+export function drinkColor(cocktail: Cocktail): string {
+  const group = baseGroupOf(cocktail.bases);
+  if (group === "ノンアルコール") return NON_ALCOHOLIC_DRINK_COLOR;
+  return BASE_GROUPS.find((g) => g.name === group)?.color ?? "#ffffff";
 }
 
 // 英語の表記（別名のうち、最初の英字だけのもの）。なければ空

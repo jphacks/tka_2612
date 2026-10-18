@@ -230,88 +230,79 @@ export default function CocktailPoints() {
     selectedId === null ? null : (pointsById.get(selectedId) ?? null);
 
   return (
-    <main className="site-shell points-page">
+    <main className="site-shell map-page">
       <SiteHeader>
         <Link className="topbar-link" to="/">
-          ホームへ戻る <span aria-hidden="true">↗</span>
+          ← ホーム
         </Link>
       </SiteHeader>
+      <h1 className="sr-only">カクテルの地図</h1>
 
-      <section className="points-section" aria-labelledby="points-title">
-        <div className="points-heading">
-          <div>
-            <p className="eyebrow section-eyebrow">EXPLORE THE MAP</p>
-            <h1 id="points-title">カクテルの地図</h1>
-            <p className="points-description">
-              似ているお酒ほど近くに並んでいます。点を選ぶと詳しく見られます。
+      <ul className="map-legend" aria-label="点の色とベースのお酒">
+        {BASE_GROUPS.map((b) => (
+          <li key={b.name}>
+            <span style={{ backgroundColor: b.color, color: b.color }} />
+            {b.name}
+          </li>
+        ))}
+      </ul>
+
+      <div className="map">
+        <CocktailCloud
+          layout={layout}
+          selectedId={selectedId}
+          bestMatchId={bestMatchId}
+          focus={focus}
+          onSelect={handleSelect}
+        />
+
+        <MenuScanBanner />
+        <div className="map-panel">
+          {selected && (
+            <DetailCard
+              cocktail={selected}
+              score={scores?.get(selected.id) ?? null}
+              backTo={`${location.pathname}${location.search}`}
+              onClose={() => setSelectedId(null)}
+            />
+          )}
+        </div>
+
+        <div className="map-bottom">
+          {status && (
+            <p className="map-status" aria-live="polite">
+              {status}
             </p>
-          </div>
-          <ul className="points-legend" aria-label="点の色とベースのお酒">
-            {BASE_GROUPS.map((b) => (
-              <li key={b.name}>
-                <span style={{ backgroundColor: b.color }} />
-                {b.name}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="points-map">
-          <CocktailCloud
-            layout={layout}
-            selectedId={selectedId}
-            bestMatchId={bestMatchId}
-            focus={focus}
-            onSelect={handleSelect}
-          />
-
-          <MenuScanBanner />
-          <div className="points-panel">
-            {selected && (
-              <DetailCard
-                cocktail={selected}
-                score={scores?.get(selected.id) ?? null}
-                backTo={`${location.pathname}${location.search}`}
-                onClose={() => setSelectedId(null)}
-              />
-            )}
-          </div>
-
-          <div className="points-overlay">
-            {status && (
-              <p className="points-status" aria-live="polite">
-                {status}
-              </p>
-            )}
-            <form className="points-search" onSubmit={handleSubmit}>
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="味や気分で探す（例: 甘くてフルーティ）"
-                aria-label="カクテルを検索"
-              />
-              {query && (
-                <button
-                  type="button"
-                  className="points-search-clear"
-                  onClick={handleClear}
-                  aria-label="検索をクリア"
-                >
-                  ×
-                </button>
-              )}
+          )}
+          <form className="map-search" onSubmit={handleSubmit}>
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="味や気分で探す"
+              aria-label="カクテルを検索"
+            />
+            {query && (
               <button
-                type="submit"
-                className="points-search-submit"
-                disabled={points.length === 0}
+                type="button"
+                className="map-search-clear"
+                onClick={handleClear}
+                aria-label="検索をクリア"
               >
-                探す
+                ×
               </button>
-            </form>
-          </div>
+            )}
+            <button
+              type="submit"
+              className="map-search-submit"
+              disabled={points.length === 0}
+              aria-label="探す"
+            >
+              →
+            </button>
+          </form>
         </div>
-      </section>
+      </div>
     </main>
   );
 }
@@ -327,38 +318,36 @@ function MenuScanBanner() {
   if (scan.status === "idle") return null;
 
   return (
-    <section className="points-banner" aria-live="polite">
+    <section className="map-banner" aria-live="polite">
       {scan.status === "scanning" && (
         <>
-          <span className="points-spinner" aria-hidden="true" />
-          <p>
-            メニューを読み取っています。終わるまで地図を眺めてお待ちください
-          </p>
+          <span className="spinner" aria-hidden="true" />
+          <p>メニューを読み取り中…</p>
         </>
       )}
       {scan.status === "done" && (
         <>
-          <p>メニューの読み取りが終わりました</p>
+          <p>メニューを読み取りました</p>
           <button
             type="button"
-            className="points-banner-action"
+            className="pill-button"
             onClick={() => {
               clearMenuScan();
               navigate("/cocktails");
             }}
           >
-            おすすめを見る <span aria-hidden="true">→</span>
+            おすすめを見る →
           </button>
         </>
       )}
       {scan.status === "failed" && (
         <>
-          <p className="field-error" role="alert">
+          <p className="page-error" role="alert">
             {scan.message}
           </p>
           <button
             type="button"
-            className="points-close"
+            className="close-button"
             onClick={clearMenuScan}
             aria-label="閉じる"
           >
@@ -380,49 +369,43 @@ type DetailCardProps = {
 };
 
 function DetailCard({ cocktail, score, backTo, onClose }: DetailCardProps) {
-  const english = englishName(cocktail);
-
   return (
-    <section className="points-card" aria-label={cocktail.name}>
-      <div className="points-card-head">
+    <section className="map-card" aria-label={cocktail.name}>
+      <div className="map-card-head">
         <div>
-          {english && <p className="cocktail-english">{english}</p>}
           <h2>{cocktail.name}</h2>
-          <div className="cocktail-tags">
-            {baseTags(cocktail).map((tag) => (
-              <span key={tag}>{tag}</span>
-            ))}
-          </div>
+          <p className="drink-en">{englishName(cocktail)}</p>
         </div>
         {score !== null && (
-          <div className="match-score">
-            <strong>
-              {Math.round(score * 100)}
-              <small>%</small>
-            </strong>
-            <span>相性</span>
-          </div>
+          <p className="score" title="相性">
+            {Math.round(score * 100)}
+            <small>%</small>
+          </p>
         )}
         <button
           type="button"
-          className="points-close"
+          className="close-button"
           onClick={onClose}
           aria-label="閉じる"
         >
           ×
         </button>
       </div>
-      <p className="points-card-description">{cocktail.description}</p>
-      <p className="points-card-ingredients">
-        材料: {cocktail.ingredients.join("・")}
-      </p>
-      <Link
-        className="text-link"
-        to={`/cocktails/${cocktail.id}`}
-        state={{ backTo, score }}
-      >
-        詳しく見る ↗
-      </Link>
+      <p className="map-card-text">{cocktail.description}</p>
+      <div className="map-card-foot">
+        <div className="tags">
+          {baseTags(cocktail).map((tag) => (
+            <span key={tag}>{tag}</span>
+          ))}
+        </div>
+        <Link
+          className="text-link"
+          to={`/cocktails/${cocktail.id}`}
+          state={{ backTo, score }}
+        >
+          詳しく →
+        </Link>
+      </div>
     </section>
   );
 }
