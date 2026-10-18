@@ -1,4 +1,4 @@
-import type { RecognizedMenuItem } from "./ocr";
+import type { MenuMatch } from "./ocr";
 
 const SESSION_KEY = "cocktail-tasukeru.recommendation-session";
 
@@ -6,37 +6,37 @@ export type RecommendationSession = {
   // 検索ごとの ID。おすすめの結果をこの検索のものとして保存するのに使う
   id: string;
   query: string;
+  // メニューの写真（長辺 1440px に縮小した JPEG の data URL）
   menuImage: string | null;
   menuImageName: string | null;
-  recognizedMenuItems: RecognizedMenuItem[] | null;
+  // 写真から読み取ったメニューを照合した結果（写真なし・読み取り失敗なら null）
+  menuMatch: MenuMatch | null;
   ocrError: string | null;
 };
 
-function isRecognizedMenuItems(
-  value: unknown,
-): value is RecognizedMenuItem[] | null {
+function isStringArray(value: unknown): value is string[] {
   return (
-    value === null ||
-    (Array.isArray(value) &&
-      value.every(
-        (item) =>
-          typeof item === "object" &&
-          item !== null &&
-          "text" in item &&
-          typeof item.text === "string" &&
-          "x" in item &&
-          (item.x === null ||
-            (typeof item.x === "number" &&
-              Number.isFinite(item.x) &&
-              item.x >= 0 &&
-              item.x <= 100)) &&
-          "y" in item &&
-          (item.y === null ||
-            (typeof item.y === "number" &&
-              Number.isFinite(item.y) &&
-              item.y >= 0 &&
-              item.y <= 100)),
-      ))
+    Array.isArray(value) && value.every((item) => typeof item === "string")
+  );
+}
+
+function isMenuMatch(value: unknown): value is MenuMatch | null {
+  if (value === null) return true;
+  return (
+    typeof value === "object" &&
+    "matched" in value &&
+    Array.isArray(value.matched) &&
+    value.matched.every(
+      (item: unknown) =>
+        typeof item === "object" &&
+        item !== null &&
+        "cocktailId" in item &&
+        typeof item.cocktailId === "string" &&
+        "text" in item &&
+        typeof item.text === "string",
+    ) &&
+    "unregistered" in value &&
+    isStringArray(value.unregistered)
   );
 }
 
@@ -76,7 +76,7 @@ function fileToImageDataUrl(file: File): Promise<string> {
 export async function saveRecommendationSession(
   query: string,
   imageFile: File | null,
-  recognizedMenuItems: RecognizedMenuItem[] | null,
+  menuMatch: MenuMatch | null,
   ocrError: string | null,
 ): Promise<void> {
   const session: RecommendationSession = {
@@ -84,7 +84,7 @@ export async function saveRecommendationSession(
     query,
     menuImage: imageFile ? await fileToImageDataUrl(imageFile) : null,
     menuImageName: imageFile?.name ?? null,
-    recognizedMenuItems,
+    menuMatch,
     ocrError,
   };
 
@@ -102,8 +102,7 @@ export function loadRecommendationSession(): RecommendationSession | null {
     );
   }
 
-  const recognizedMenuItems =
-    "recognizedMenuItems" in value ? value.recognizedMenuItems : null;
+  const menuMatch = "menuMatch" in value ? value.menuMatch : null;
   const ocrError = "ocrError" in value ? value.ocrError : null;
 
   if (
@@ -115,7 +114,7 @@ export function loadRecommendationSession(): RecommendationSession | null {
     (typeof value.menuImage !== "string" && value.menuImage !== null) ||
     !("menuImageName" in value) ||
     (typeof value.menuImageName !== "string" && value.menuImageName !== null) ||
-    !isRecognizedMenuItems(recognizedMenuItems) ||
+    !isMenuMatch(menuMatch) ||
     (ocrError !== null && typeof ocrError !== "string")
   ) {
     throw new Error(
@@ -128,7 +127,7 @@ export function loadRecommendationSession(): RecommendationSession | null {
     query: value.query,
     menuImage: value.menuImage,
     menuImageName: value.menuImageName,
-    recognizedMenuItems,
+    menuMatch,
     ocrError,
   };
 }
