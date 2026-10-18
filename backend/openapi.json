@@ -154,7 +154,7 @@
           "menu"
         ],
         "summary": "Scan Menu",
-        "description": "メニューの写真から、載っているお酒の名前と写真上の位置を AI（Gemini）で読み取る\n\n`x`・`y` は名前の中心の位置（写真の幅・高さに対する %）。読み取れなかったときは null。\n読み取った名前は、そのまま `/menu/match` に渡すとデータベースのお酒と照合できる。",
+        "description": "メニューの写真から、載っているお酒の名前を AI（Gemini）で読み取る\n\n速くするため、位置は求めない（おすすめが決まったお酒の位置は `/menu/locate` で求める）。\n読み取った名前は、そのまま `/menu/match` に渡すとデータベースのお酒と照合できる。",
         "operationId": "scan_menu",
         "requestBody": {
           "content": {
@@ -173,6 +173,57 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MenuScanResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "画像が大きすぎる（10MB まで）"
+          },
+          "415": {
+            "description": "画像ではないファイル"
+          },
+          "503": {
+            "description": "Gemini が使えない（API キー未設定・回数制限など）"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/menu/locate": {
+      "post": {
+        "tags": [
+          "menu"
+        ],
+        "summary": "Locate Menu Items",
+        "description": "メニューの写真の中で、指定したお酒の名前が書かれている位置を AI（Gemini）で求める\n\nおすすめが決まったお酒（5件）だけ位置を求めて、写真に印を付けるために使う。\n写真は data URL で受け取る（frontend が保存している縮小版をそのまま送れるようにするため）。\n`x`・`y` は名前の中心の位置（写真の幅・高さに対する %）。見つからなければ null。",
+        "operationId": "locate_menu_items",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MenuLocateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MenuLocateResponse"
                 }
               }
             }
@@ -749,6 +800,50 @@
         "title": "MatchedCocktail",
         "description": "データベースのお酒と一致した名前"
       },
+      "MenuLocateRequest": {
+        "properties": {
+          "image": {
+            "type": "string",
+            "title": "Image",
+            "description": "メニューの写真の data URL（例: data:image/jpeg;base64,...）"
+          },
+          "names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Names",
+            "description": "位置を求めるお酒の名前（メニューに書かれていたとおり。10件まで）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image",
+          "names"
+        ],
+        "title": "MenuLocateRequest",
+        "description": "メニューの写真上の位置を求めるリクエスト"
+      },
+      "MenuLocateResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MenuScanItem"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "指定したお酒の位置（指定した順。見つからなければ x・y が null）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "MenuLocateResponse",
+        "description": "メニューの写真上の、指定したお酒の位置"
+      },
       "MenuMatchRequest": {
         "properties": {
           "names": {
@@ -834,22 +929,22 @@
           "y"
         ],
         "title": "MenuScanItem",
-        "description": "メニューの写真から読み取ったお酒1件"
+        "description": "メニューの写真上の、お酒の名前の位置"
       },
       "MenuScanResponse": {
         "properties": {
-          "items": {
+          "names": {
             "items": {
-              "$ref": "#/components/schemas/MenuScanItem"
+              "type": "string"
             },
             "type": "array",
-            "title": "Items",
-            "description": "メニューに載っているお酒（載っている順、同じ名前は1件）"
+            "title": "Names",
+            "description": "メニューに載っているお酒の名前（載っている順、同じ名前は1件）"
           }
         },
         "type": "object",
         "required": [
-          "items"
+          "names"
         ],
         "title": "MenuScanResponse",
         "description": "メニューの写真から読み取った結果"

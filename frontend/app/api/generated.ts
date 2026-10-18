@@ -98,6 +98,40 @@ export interface MatchedCocktail {
 }
 
 /**
+ * メニューの写真上の位置を求めるリクエスト
+ */
+export interface MenuLocateRequest {
+  /** メニューの写真の data URL（例: data:image/jpeg;base64,...） */
+  image: string;
+  /**
+   * 位置を求めるお酒の名前（メニューに書かれていたとおり。10件まで）
+   * @minItems 1
+   * @maxItems 10
+   */
+  names: string[];
+}
+
+/**
+ * メニューの写真上の、お酒の名前の位置
+ */
+export interface MenuScanItem {
+  /** メニューに書かれているお酒の名前 */
+  name: string;
+  /** 名前の中心の横位置（写真の幅に対する %、0〜100）。読み取れなかったときは null */
+  x: number | null;
+  /** 名前の中心の縦位置（写真の高さに対する %、0〜100）。読み取れなかったときは null */
+  y: number | null;
+}
+
+/**
+ * メニューの写真上の、指定したお酒の位置
+ */
+export interface MenuLocateResponse {
+  /** 指定したお酒の位置（指定した順。見つからなければ x・y が null） */
+  items: MenuScanItem[];
+}
+
+/**
  * メニューに載っているお酒の名前
  */
 export interface MenuMatchRequest {
@@ -119,23 +153,11 @@ export interface MenuMatchResponse {
 }
 
 /**
- * メニューの写真から読み取ったお酒1件
- */
-export interface MenuScanItem {
-  /** メニューに書かれているお酒の名前 */
-  name: string;
-  /** 名前の中心の横位置（写真の幅に対する %、0〜100）。読み取れなかったときは null */
-  x: number | null;
-  /** 名前の中心の縦位置（写真の高さに対する %、0〜100）。読み取れなかったときは null */
-  y: number | null;
-}
-
-/**
  * メニューの写真から読み取った結果
  */
 export interface MenuScanResponse {
-  /** メニューに載っているお酒（載っている順、同じ名前は1件） */
-  items: MenuScanItem[];
+  /** メニューに載っているお酒の名前（載っている順、同じ名前は1件） */
+  names: string[];
 }
 
 /**
@@ -506,9 +528,9 @@ export const getScanMenuUrl = () => {
 };
 
 /**
- * メニューの写真から、載っているお酒の名前と写真上の位置を AI（Gemini）で読み取る
+ * メニューの写真から、載っているお酒の名前を AI（Gemini）で読み取る
  *
- * `x`・`y` は名前の中心の位置（写真の幅・高さに対する %）。読み取れなかったときは null。
+ * 速くするため、位置は求めない（おすすめが決まったお酒の位置は `/menu/locate` で求める）。
  * 読み取った名前は、そのまま `/menu/match` に渡すとデータベースのお酒と照合できる。
  * @summary Scan Menu
  */
@@ -529,6 +551,104 @@ export const scanMenu = async (
 
   const data: scanMenuResponse["data"] = body ? JSON.parse(body) : {};
   return { data, status: res.status, headers: res.headers } as scanMenuResponse;
+};
+
+export type locateMenuItemsResponse200 = {
+  data: MenuLocateResponse;
+  status: 200;
+};
+
+export type locateMenuItemsResponse413 = {
+  data: void;
+  status: 413;
+};
+
+export type locateMenuItemsResponse415 = {
+  data: void;
+  status: 415;
+};
+
+export type locateMenuItemsResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type locateMenuItemsResponse503 = {
+  data: void;
+  status: 503;
+};
+
+export type locateMenuItemsResponseSuccess = locateMenuItemsResponse200 & {
+  headers: Headers;
+};
+export type locateMenuItemsResponseError = (
+  | locateMenuItemsResponse413
+  | locateMenuItemsResponse415
+  | locateMenuItemsResponse422
+  | locateMenuItemsResponse503
+) & {
+  headers: Headers;
+};
+
+export type locateMenuItemsResponse =
+  | locateMenuItemsResponseSuccess
+  | locateMenuItemsResponseError;
+
+export const getLocateMenuItemsUrl = () => {
+  return `${API_BASE_URL}/menu/locate`;
+};
+
+/**
+ * メニューの写真の中で、指定したお酒の名前が書かれている位置を AI（Gemini）で求める
+ *
+ * おすすめが決まったお酒（5件）だけ位置を求めて、写真に印を付けるために使う。
+ * 写真は data URL で受け取る（frontend が保存している縮小版をそのまま送れるようにするため）。
+ * `x`・`y` は名前の中心の位置（写真の幅・高さに対する %）。見つからなければ null。
+ * @summary Locate Menu Items
+ */
+export const locateMenuItems = async (
+  menuLocateRequest: MenuLocateRequest,
+  options?: RequestInit,
+): Promise<locateMenuItemsResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  const res = await fetch(getLocateMenuItemsUrl(), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(menuLocateRequest),
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: locateMenuItemsResponse["data"] = body ? JSON.parse(body) : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as locateMenuItemsResponse;
 };
 
 export type matchMenuResponse200 = {
