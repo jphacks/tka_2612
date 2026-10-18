@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { SiteFooter, SiteHeader } from "~/components/site-chrome";
-import { type RecognizedMenuItem, recognizeMenuImage } from "~/lib/ocr";
+import { analyzeMenuImage, type MenuMatch } from "~/lib/ocr";
 import { saveRecommendationSession } from "~/lib/recommendation-session";
 import type { Route } from "./+types/home";
 
@@ -17,7 +17,7 @@ export function meta(_: Route.MetaArgs) {
 }
 
 type ScanOutcome = {
-  items: RecognizedMenuItem[] | null;
+  menuMatch: MenuMatch | null;
   error: string | null;
 };
 
@@ -52,10 +52,11 @@ export default function Home() {
   // メニューの読み取りを始める。失敗しても例外にせず、結果にエラーを入れて返す
   function startScan(file: File): Promise<ScanOutcome> {
     setOcrProgress("メニューを読み取っています…");
-    const promise = recognizeMenuImage(file).then(
-      (items) => ({ items, error: null }),
+    // 読み取りと照合をここで済ませ、送信時はおすすめの計算だけにする
+    const promise = analyzeMenuImage(file).then(
+      (menuMatch) => ({ menuMatch, error: null }),
       (error: unknown) => ({
-        items: null,
+        menuMatch: null,
         error:
           error instanceof Error
             ? error.message
@@ -63,11 +64,12 @@ export default function Home() {
       }),
     );
     scanRef.current = { file, promise };
-    promise.then(({ items, error }) => {
+    promise.then(({ menuMatch, error }) => {
       // 読み取り中に写真を変えた・消したときは、古い結果を表示しない
       if (scanRef.current?.file !== file) return;
       setOcrProgress(
-        error ?? `メニューを読み取りました（${items?.length ?? 0}件）`,
+        error ??
+          `メニューを読み取りました（登録済みのお酒 ${menuMatch?.matched.length ?? 0}件）`,
       );
     });
     return promise;
@@ -102,7 +104,7 @@ export default function Home() {
     setIsSubmitting(true);
     setSubmitError("");
     try {
-      let recognizedMenuItems: RecognizedMenuItem[] | null = null;
+      let menuMatch: MenuMatch | null = null;
       let ocrError: string | null = null;
 
       if (imageFile) {
@@ -110,14 +112,14 @@ export default function Home() {
         const outcome = await (scanRef.current?.file === imageFile
           ? scanRef.current.promise
           : startScan(imageFile));
-        recognizedMenuItems = outcome.items;
+        menuMatch = outcome.menuMatch;
         ocrError = outcome.error;
       }
 
       await saveRecommendationSession(
         preference.trim(),
         imageFile,
-        recognizedMenuItems,
+        menuMatch,
         ocrError,
       );
       navigate("/cocktails");
