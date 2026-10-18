@@ -1735,13 +1735,23 @@ textarea:focus-visible,
   color: var(--ink);
 }
 
+/* メニューの読み取りの状況。地図の右上に出し、選んだお酒のカードはその下に出す */
 .points-banner {
+  position: absolute;
+  top: 16px;
+  right: 16px;
   display: flex;
+  width: min(360px, calc(100% - 32px));
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
   color: #756961;
   font-size: 12px;
+}
+
+.points-banner + .points-panel {
+  top: 92px;
+  max-height: calc(100% - 186px);
 }
 
 .points-banner p {
@@ -2080,6 +2090,182 @@ textarea:focus-visible,
 
   .footer > span:nth-child(2) {
     display: none;
+  }
+}
+
+/* スマホ向けの調整。指で押しやすく、文字を読みやすくする（上の指定より後に置いて上書きする） */
+@media (max-width: 760px) {
+  /* iPhone は文字が 16px 未満の入力欄を選ぶと画面を拡大するため、16px にする */
+  .form-field textarea,
+  .points-search input {
+    font-size: 16px;
+  }
+
+  /* 指で押しやすいよう、押せる部分を 40px 以上にする */
+  .topbar-link {
+    padding: 12px 0;
+    font-size: 13px;
+  }
+
+  .suggestion-chip {
+    min-height: 40px;
+    padding-inline: 14px;
+    font-size: 13px;
+  }
+
+  /* 小さすぎる文字を、スマホでも読める大きさにする */
+  .field-optional,
+  .privacy-note,
+  .demo-note,
+  .catalog-note p span,
+  .list-menu-preview figcaption,
+  .unregistered span {
+    font-size: 11px;
+  }
+
+  .catalog-note p,
+  .cocktail-description {
+    font-size: 12px;
+  }
+
+  .cocktail-english {
+    font-size: 10px;
+  }
+
+  .cocktail-tags span,
+  .match-score {
+    font-size: 11px;
+  }
+
+  .step-label {
+    white-space: nowrap;
+  }
+
+  /* おすすめ一覧: メニュー写真を小さくして、おすすめを早く見せる */
+  .list-menu-preview img {
+    max-height: 160px;
+  }
+
+  /* 地図: 見出しを詰めて、地図を画面の端まで広げる */
+  .points-section {
+    width: 100%;
+    padding: 12px 0 0;
+  }
+
+  .points-heading {
+    margin-bottom: 10px;
+    padding-inline: 16px;
+  }
+
+  .points-heading .section-eyebrow {
+    margin-bottom: 6px;
+  }
+
+  .points-heading h1 {
+    font-size: 20px;
+  }
+
+  .points-description {
+    display: none;
+  }
+
+  /* 凡例は1行にして、横にスクロールできるようにする */
+  .points-legend {
+    flex-wrap: nowrap;
+    gap: 14px;
+    margin: 10px -16px 0;
+    padding: 0 16px 4px;
+    overflow-x: auto;
+    font-size: 11px;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+
+  .points-legend li {
+    flex-shrink: 0;
+  }
+
+  .points-map {
+    min-height: 0;
+    border-width: 1px 0 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .points-panel {
+    max-height: 55%;
+  }
+
+  .points-card {
+    padding: 14px 16px;
+  }
+
+  .points-card h2 {
+    font-size: 16px;
+  }
+
+  /* 選んだ点が隠れないよう、カードは短くする（全文は「詳しく見る」の詳細ページで読める） */
+  .points-card-description {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 13px;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .points-card-ingredients {
+    display: none;
+  }
+
+  .points-card .text-link {
+    display: inline-block;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+
+  .points-close,
+  .points-search-clear {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+
+  .points-close {
+    margin: -10px -10px 0 0;
+  }
+
+  .points-search-submit,
+  .points-banner-action {
+    min-height: 44px;
+  }
+
+  /* 読み取りの状況は地図の上端に出し、下側の選んだお酒のカードと重ねない */
+  .points-banner {
+    top: 12px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    padding: 8px 8px 8px 14px;
+    font-size: 13px;
+  }
+
+  .points-banner + .points-panel {
+    top: auto;
+    max-height: 55%;
+  }
+}
+
+/* 小さいスマホ: ホームの飾りの絵を小さくして、入力フォームまでのスクロールを短くする */
+@media (max-width: 480px) {
+  .hero {
+    min-height: 470px;
+  }
+
+  .hero-art {
+    top: 262px;
+    right: -84px;
+    transform: scale(0.6);
   }
 }
 
