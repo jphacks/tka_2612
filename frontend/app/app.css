@@ -425,10 +425,66 @@ label {
   stroke-width: 1.6;
 }
 
+/* メニューを撮るボタンは、いちばん使うので大きく光らせる */
+.icon-button-camera {
+  width: 60px;
+  height: 60px;
+  border-color: rgb(255 79 139 / 55%);
+  box-shadow:
+    0 0 18px rgb(255 79 139 / 30%),
+    inset 0 0 12px rgb(255 79 139 / 15%);
+  color: var(--ink);
+}
+
+.icon-button-camera svg {
+  width: 28px;
+  height: 28px;
+}
+
+/* 選んだ写真は、撮るボタンと同じ大きさで見せる */
 .photo-thumb {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 60px;
+  height: 60px;
+}
+
+/* ホームから、検索せずに全カクテルの地図へ */
+.map-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 0 20px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 14px;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.map-link:hover {
+  border-color: rgb(255 79 139 / 55%);
+  color: var(--ink);
+}
+
+.map-link svg {
+  width: 20px;
+  height: 20px;
+  filter: drop-shadow(0 0 4px rgb(255 79 139 / 60%));
+}
+
+.map-link svg circle {
+  fill: currentColor;
+}
+
+.map-link svg path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
 }
 
 .photo-thumb img {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { NeonGlass } from "~/components/neon-glass";
 import { SiteHeader } from "~/components/site-chrome";
 import { startMenuScan } from "~/lib/menu-scan-task";
@@ -144,7 +144,10 @@ export default function Home() {
               </div>
             ) : (
               <>
-                <label className="icon-button" htmlFor="menu-camera">
+                <label
+                  className="icon-button icon-button-camera"
+                  htmlFor="menu-camera"
+                >
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M4 8h3l1.5-2h7L17 8h3v11H4z" />
                     <circle cx="12" cy="13" r="3.5" />
@@ -174,6 +177,18 @@ export default function Home() {
             </p>
           )}
         </form>
+
+        <Link className="map-link" to="/cocktail_points">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="6" cy="7" r="1.6" />
+            <circle cx="17" cy="5" r="1.6" />
+            <circle cx="12" cy="13" r="1.6" />
+            <circle cx="19" cy="17" r="1.6" />
+            <circle cx="7" cy="19" r="1.6" />
+            <path d="m7.3 8.2 3.4 3.6m2.7-.4 3-5m-3 8.2 4.6 2.8m-6.4-1.6-3.8 3.4" />
+          </svg>
+          地図で眺める
+        </Link>
       </section>
     </main>
   );
