@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { SiteFooter, SiteHeader } from "~/components/site-chrome";
-import { type RecognizedMenuItem, recognizeMenuImage } from "~/lib/ocr";
-import { saveRecommendationSession } from "~/lib/recommendation-session";
+import { startMenuScan } from "~/lib/menu-scan-task";
 import type { Route } from "./+types/home";
 
 export function meta(_: Route.MetaArgs) {
@@ -23,9 +22,6 @@ export default function Home() {
   const [imageError, setImageError] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState("");
-  const [ocrProgress, setOcrProgress] = useState("");
 
   useEffect(() => {
     if (!imageFile) {
@@ -41,7 +37,6 @@ export default function Home() {
 
   function selectImage(file: File | undefined) {
     setImageError("");
-    setOcrProgress("");
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       setImageError("画像ファイルを選択してください。");
@@ -56,44 +51,13 @@ export default function Home() {
     event.currentTarget.value = "";
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // メニューの写真がなければ、全カクテルの中から入力文に近いものを点群で見せる
-    if (!imageFile) {
-      navigate(`/cocktail_points?q=${encodeURIComponent(preference.trim())}`);
-      return;
-    }
-    setIsSubmitting(true);
-    setSubmitError("");
-    try {
-      let recognizedMenuItems: RecognizedMenuItem[] | null = null;
-      let ocrError: string | null = null;
-
-      setOcrProgress("メニューを読み取っています…");
-      try {
-        recognizedMenuItems = await recognizeMenuImage(imageFile);
-      } catch (error) {
-        ocrError =
-          error instanceof Error
-            ? error.message
-            : "メニュー画像の文字認識に失敗しました。";
-      }
-
-      await saveRecommendationSession(
-        preference.trim(),
-        imageFile,
-        recognizedMenuItems,
-        ocrError,
-      );
-      navigate("/cocktails");
-    } catch {
-      setSubmitError(
-        "検索を開始できませんでした。画像を小さくするか、もう一度お試しください。",
-      );
-    } finally {
-      setIsSubmitting(false);
-      setOcrProgress("");
-    }
+    const query = preference.trim();
+    // メニューの写真があれば読み取りを始め、終わるまで点群のページで待てるようにする。
+    // 読み取りが終わると、点群のページからおすすめ一覧へ進める
+    if (imageFile) startMenuScan(query, imageFile);
+    navigate(`/cocktail_points?q=${encodeURIComponent(query)}`);
   }
 
   return (
@@ -176,7 +140,6 @@ export default function Home() {
               id="preference"
               name="preference"
               value={preference}
-              disabled={isSubmitting}
               onChange={(event) => {
                 setPreference(event.target.value);
               }}
@@ -194,7 +157,6 @@ export default function Home() {
                       setPreference(suggestion);
                     }}
                     type="button"
-                    disabled={isSubmitting}
                   >
                     + {suggestion}
                   </button>
@@ -216,7 +178,6 @@ export default function Home() {
               id="menu-photo"
               type="file"
               accept="image/*"
-              disabled={isSubmitting}
               onChange={handleFileInput}
             />
             <input
@@ -225,7 +186,6 @@ export default function Home() {
               type="file"
               accept="image/*"
               capture="environment"
-              disabled={isSubmitting}
               onChange={handleFileInput}
             />
             {imageUrl ? (
@@ -247,7 +207,6 @@ export default function Home() {
                   }}
                   type="button"
                   aria-label="選択した写真を削除"
-                  disabled={isSubmitting}
                 >
                   ×
                 </button>
@@ -302,33 +261,19 @@ export default function Home() {
               <span aria-hidden="true">◈</span>{" "}
               写真はメニューの読み取りのため、Google の AI（Gemini）に送信します
             </p>
-            {ocrProgress && (
-              <p className="ocr-progress" aria-live="polite">
-                {ocrProgress}
-              </p>
-            )}
           </div>
 
-          <button
-            className="submit-button"
-            disabled={isSubmitting}
-            type="submit"
-          >
-            <span>
-              {isSubmitting ? "準備しています…" : "おすすめを見つける"}
-            </span>
+          <button className="submit-button" type="submit">
+            <span>おすすめを見つける</span>
             <span className="submit-arrow" aria-hidden="true">
               →
             </span>
           </button>
           <p className="demo-note">
-            写真がなければ、全カクテルの地図から近いものを探せます
+            {imageFile
+              ? "メニューを読み取るあいだ、全カクテルの地図を眺めて待てます"
+              : "写真がなければ、全カクテルの地図から近いものを探せます"}
           </p>
-          {submitError && (
-            <p className="field-error request-error" role="alert">
-              {submitError}
-            </p>
-          )}
         </form>
       </section>
 

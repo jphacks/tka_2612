@@ -1,5 +1,12 @@
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import {
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { BASE_GROUPS, baseLabel } from "../cocktails/bases";
 import { CocktailCloud, type FocusRequest } from "../cocktails/CocktailCloud";
 import type { Layout } from "../cocktails/cloudScene";
@@ -9,6 +16,12 @@ import {
   searchNearby,
 } from "../cocktails/cocktailData";
 import { createUmapClient, type UmapClient } from "../cocktails/umapClient";
+import {
+  clearMenuScan,
+  getMenuScanState,
+  getServerMenuScanState,
+  subscribeMenuScan,
+} from "../lib/menu-scan-task";
 import type { Route } from "./+types/cocktail_points";
 
 export function meta(_: Route.MetaArgs) {
@@ -240,6 +253,7 @@ export default function CocktailPoints() {
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 px-4 pb-6">
         <div className="pointer-events-auto mx-auto flex max-w-xl flex-col gap-3">
+          <MenuScanBanner />
           {selected && (
             <DetailCard
               cocktail={selected}
@@ -299,6 +313,68 @@ export default function CocktailPoints() {
         </div>
       </div>
     </main>
+  );
+}
+
+// ホームで始めたメニューの読み取りの状況。終わったら、メニューから選んだおすすめへ進める
+function MenuScanBanner() {
+  const navigate = useNavigate();
+  const scan = useSyncExternalStore(
+    subscribeMenuScan,
+    getMenuScanState,
+    getServerMenuScanState,
+  );
+  if (scan.status === "idle") return null;
+
+  return (
+    <section
+      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900/85 px-4 py-3 text-sm shadow-lg backdrop-blur"
+      aria-live="polite"
+    >
+      {scan.status === "scanning" && (
+        <>
+          <span
+            className="size-4 shrink-0 animate-spin rounded-full border-2 border-sky-400 border-t-transparent"
+            aria-hidden="true"
+          />
+          <p className="flex-1 text-slate-300">
+            メニューを読み取っています。終わるまで地図を眺めてお待ちください
+          </p>
+        </>
+      )}
+      {scan.status === "done" && (
+        <>
+          <p className="flex-1 text-slate-100">
+            メニューの読み取りが終わりました
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              clearMenuScan();
+              navigate("/cocktails");
+            }}
+            className="shrink-0 rounded-full bg-sky-500 px-4 py-1.5 font-semibold text-slate-950 hover:bg-sky-400"
+          >
+            おすすめを見る
+          </button>
+        </>
+      )}
+      {scan.status === "failed" && (
+        <>
+          <p className="flex-1 text-rose-300" role="alert">
+            {scan.message}
+          </p>
+          <button
+            type="button"
+            onClick={clearMenuScan}
+            aria-label="閉じる"
+            className="grid size-8 shrink-0 place-items-center rounded-full text-slate-400 hover:bg-white/10 hover:text-slate-100"
+          >
+            ×
+          </button>
+        </>
+      )}
+    </section>
   );
 }
 
