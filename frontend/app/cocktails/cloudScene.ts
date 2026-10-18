@@ -4,8 +4,10 @@ import type { Vec2 } from "./types";
 // 点として描くのに必要なお酒の情報
 export type PointInfo = { id: string; name: string; baseGroup: string };
 
-// 関連度がないとき（検索していないとき）の濃さ・大きさ
+// 関連度がないとき（検索していないとき）の大きさ
 const IDLE_RELEVANCE = 0.55;
+// 点の不透明度（関連度によらず一定。選択中の点だけ 1）
+const POINT_ALPHA = 0.85;
 // 全体表示のときの点の半径（px）
 const POINT_RADIUS = 2.5;
 const MAX_POINT_RADIUS = 18;
@@ -146,8 +148,7 @@ export function createCloudScene(
     const radius = pointRadius(i);
     if (!isOnScreen(sx, sy, radius + 4)) return;
     const isSelected = cocktails[i].id === selectedId;
-    const alpha = isSelected ? 1 : 0.04 + 0.91 * relevance[i] ** 1.6;
-    ctx.globalAlpha = alpha * fade;
+    ctx.globalAlpha = (isSelected ? 1 : POINT_ALPHA) * fade;
     ctx.fillStyle = cocktails[i].id === bestId ? BEST_MATCH_COLOR : colors[i];
     ctx.beginPath();
     ctx.arc(sx, sy, radius, 0, Math.PI * 2);
