@@ -8,6 +8,7 @@ import {
 } from "~/lib/recommendation-session";
 import {
   getRecommendationResults,
+  locateRecommendations,
   type RecommendationResults,
 } from "~/lib/recommendations";
 import type { Route } from "./+types/cocktails";
@@ -46,7 +47,11 @@ export default function Cocktails() {
     }
 
     getRecommendationResults(currentSession)
-      .then(setResult)
+      .then((results) => {
+        setResult(results);
+        // 一覧はすぐ表示し、詳細ページの印に使う位置は後から求めておく
+        locateRecommendations(currentSession, results);
+      })
       .catch((error: unknown) => {
         setLoadError(
           error instanceof Error

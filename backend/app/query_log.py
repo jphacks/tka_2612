@@ -23,10 +23,11 @@ def record(query: str) -> None:
         conn.execute("INSERT INTO queries (query) VALUES (?)", (text,))
 
 
-def ranking(limit: int, days: int | None = None) -> list[tuple[str, int]]:
+def ranking(limit: int | None, days: int | None = None) -> list[tuple[str, int]]:
     """よく入力された文と回数を、多い順に返す
 
-    days を指定すると、直近 days 日の分だけを数える。回数が同じなら、最近入力された順。
+    limit が None ならすべて返す。days を指定すると、直近 days 日の分だけを数える。
+    回数が同じなら、最近入力された順。
     """
     since = f"-{days} days" if days is not None else None
     with closing(db.connect()) as conn:
@@ -35,6 +36,7 @@ def ranking(limit: int, days: int | None = None) -> list[tuple[str, int]]:
             " WHERE ? IS NULL OR created_at >= datetime('now', ?)"
             " GROUP BY query ORDER BY n DESC, MAX(created_at) DESC, MAX(id) DESC"
             " LIMIT ?",
-            (since, since, limit),
+            # SQLite の LIMIT -1 は「上限なし」
+            (since, since, -1 if limit is None else limit),
         ).fetchall()
     return rows
