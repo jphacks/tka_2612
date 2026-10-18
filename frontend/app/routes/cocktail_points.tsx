@@ -318,16 +318,26 @@ function MenuScanBanner() {
   if (scan.status === "idle") return null;
 
   return (
-    <section className="map-banner" aria-live="polite">
+    <section
+      className={`map-banner is-${scan.status}`}
+      aria-live="polite"
+      aria-busy={scan.status === "scanning"}
+    >
+      {/* 読み取っている写真。読み取り中は光の帯が上下に走り、終わったら印を付ける */}
+      <div className="scan-thumb" aria-hidden="true">
+        <img src={scan.previewUrl} alt="" />
+        {scan.status === "scanning" && <span className="scan-beam" />}
+        {scan.status === "done" && <span className="scan-check">✓</span>}
+      </div>
       {scan.status === "scanning" && (
-        <>
-          <span className="spinner" aria-hidden="true" />
-          <p>メニューを読み取り中…</p>
-        </>
+        <div className="scan-progress">
+          <p>メニューを読み取り中</p>
+          <span className="scan-bar" />
+        </div>
       )}
       {scan.status === "done" && (
         <>
-          <p>メニューを読み取りました</p>
+          <p>読み取りました</p>
           <button
             type="button"
             className="pill-button"

@@ -234,16 +234,6 @@ label {
   color: var(--ink);
 }
 
-.spinner {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  border: 2px solid rgb(255 255 255 / 15%);
-  border-top-color: var(--neon);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
 /* ネオン管のようなグラス（components/neon-glass.tsx） */
 .neon-glass {
   overflow: visible;
@@ -783,6 +773,111 @@ label {
   margin: 0;
 }
 
+/* 読み取り中は、縁に光を回し、全体をゆっくり明滅させて目立たせる */
+.map-banner.is-scanning {
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(rgb(27 21 48 / 92%), rgb(27 21 48 / 92%)) padding-box,
+    conic-gradient(
+      from var(--scan-angle),
+      var(--sunset),
+      var(--neon),
+      var(--violet),
+      transparent 70%,
+      var(--sunset)
+    )
+    border-box;
+  animation:
+    scan-orbit 2.4s linear infinite,
+    scan-glow 2.4s ease-in-out infinite;
+}
+
+.map-banner.is-done {
+  border-color: rgb(255 79 139 / 55%);
+  box-shadow:
+    0 0 24px rgb(255 79 139 / 35%),
+    0 16px 40px rgb(0 0 0 / 35%);
+}
+
+/* 読み取っている写真 */
+.scan-thumb {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--glass);
+}
+
+.scan-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.7);
+}
+
+/* 写真の上を上下に走る、スキャンの光の帯 */
+.scan-beam {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 32%;
+  background: linear-gradient(
+    transparent,
+    rgb(255 79 139 / 75%) 50%,
+    transparent
+  );
+  box-shadow: 0 0 12px rgb(255 79 139 / 60%);
+  animation: scan-beam 1.4s ease-in-out infinite alternate;
+}
+
+.scan-check {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(255 79 139 / 35%);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 800;
+  text-shadow: 0 0 10px var(--neon);
+  animation: pop 400ms ease both;
+}
+
+.scan-progress {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 10px;
+}
+
+.scan-progress p {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* 終わりの見えない処理なので、流れ続ける進捗バーにする */
+.scan-bar {
+  position: relative;
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 10%);
+}
+
+.scan-bar::after {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: inherit;
+  background: var(--glow);
+  box-shadow: 0 0 10px var(--neon);
+  content: "";
+  animation: scan-bar 1.2s ease-in-out infinite;
+}
+
 /* 選んだお酒のカード。地図の中央（選んだ点）を隠さないよう右上に出す */
 .map-panel {
   position: absolute;
@@ -797,8 +892,8 @@ label {
 }
 
 .map-banner + .map-panel {
-  top: 86px;
-  max-height: calc(100% - 180px);
+  top: 100px;
+  max-height: calc(100% - 194px);
 }
 
 .map-panel > * {
@@ -939,9 +1034,51 @@ label {
   }
 }
 
-@keyframes spin {
+/* 読み取り中のバナーの縁で、光をぐるりと回すための角度 */
+@property --scan-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes scan-orbit {
   to {
-    transform: rotate(360deg);
+    --scan-angle: 360deg;
+  }
+}
+
+@keyframes scan-glow {
+  50% {
+    box-shadow:
+      0 0 28px rgb(255 79 139 / 45%),
+      0 16px 40px rgb(0 0 0 / 35%);
+  }
+}
+
+@keyframes scan-beam {
+  from {
+    transform: translateY(-120%);
+  }
+
+  to {
+    transform: translateY(320%);
+  }
+}
+
+@keyframes scan-bar {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(260%);
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
   }
 }
 
