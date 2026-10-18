@@ -57,6 +57,26 @@ def match(name: str) -> Cocktail | None:
     return next(iter(candidates.values())) if len(candidates) == 1 else None
 
 
+def match_all(names: list[str]) -> tuple[list[tuple[str, Cocktail]], list[str]]:
+    """メニューの名前をまとめて照合し、(一致した名前とお酒, データベースにない名前) を返す
+
+    空の名前は読み飛ばす。同じお酒に何度も一致したときは、最初の1件だけを返す。
+    """
+    matched: list[tuple[str, Cocktail]] = []
+    unregistered: list[str] = []
+    seen: set[str] = set()
+    for name in names:
+        if not name.strip():
+            continue
+        cocktail = match(name)
+        if cocktail is None:
+            unregistered.append(name)
+        elif cocktail.id not in seen:
+            seen.add(cocktail.id)
+            matched.append((name, cocktail))
+    return matched, unregistered
+
+
 def _within_one_edit(a: str, b: str) -> bool:
     """a と b の違いが、1文字の追加・削除・置き換えまでか（同じ文字列は含まない）"""
     if a == b or abs(len(a) - len(b)) > MAX_EDITS:

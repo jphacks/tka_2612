@@ -97,16 +97,8 @@ def match_menu(req: MenuMatchRequest) -> MenuMatchResponse:
 
     同じお酒に何度も一致したときは、最初の1件だけを返す。
     """
-    matched: list[MatchedCocktail] = []
-    unregistered: list[str] = []
-    seen: set[str] = set()
-    for name in req.names:
-        if not name.strip():
-            continue
-        cocktail = menu_matching.match(name)
-        if cocktail is None:
-            unregistered.append(name)
-        elif cocktail.id not in seen:
-            seen.add(cocktail.id)
-            matched.append(MatchedCocktail(name=name, cocktail=cocktail))
-    return MenuMatchResponse(matched=matched, unregistered=unregistered)
+    matched, unregistered = menu_matching.match_all(req.names)
+    return MenuMatchResponse(
+        matched=[MatchedCocktail(name=n, cocktail=c) for n, c in matched],
+        unregistered=unregistered,
+    )
