@@ -15,7 +15,9 @@ import {
 } from "~/lib/recommendation-session";
 import {
   loadRecommendationResults,
+  locateRecommendations,
   type RecommendationEntry,
+  type RecommendationResults,
 } from "~/lib/recommendations";
 import type { Route } from "./+types/cocktail-detail";
 
@@ -79,12 +81,19 @@ export default function CocktailDetail() {
       try {
         const currentSession = loadRecommendationSession();
         setSession(currentSession);
-        const found = currentSession
-          ? loadRecommendationResults(currentSession.id)?.recommendations.find(
-              (item) => item.cocktail.id === cocktailId,
-            )
-          : undefined;
-        setEntry(found ?? null);
+        const results = currentSession
+          ? loadRecommendationResults(currentSession.id)
+          : null;
+        const findEntry = (r: RecommendationResults) =>
+          r.recommendations.find((item) => item.cocktail.id === cocktailId) ??
+          null;
+        setEntry(results ? findEntry(results) : null);
+        // 一覧で位置を求め終わる前に開いたときは、ここで位置を待つ（問い合わせは1回にまとまる）
+        if (currentSession && results && !results.positionsLocated) {
+          locateRecommendations(currentSession, results).then((located) =>
+            setEntry(findEntry(located)),
+          );
+        }
       } catch {
         setSessionError("検索情報を読み取れませんでした。");
       }
@@ -145,14 +154,9 @@ export default function CocktailDetail() {
     );
   }
 
-  // メニュー写真上の位置（このお酒が書かれていた行を読み取れたときだけ印を付ける）
-  const menuItem = entry?.menuText
-    ? session?.recognizedMenuItems?.find(({ text }) => text === entry.menuText)
-    : undefined;
+  // メニュー写真上の位置（おすすめが決まったあとに求めた位置があるときだけ印を付ける）
   const markerPosition =
-    menuItem?.x != null && menuItem.y != null
-      ? { x: menuItem.x, y: menuItem.y }
-      : null;
+    entry?.x != null && entry.y != null ? { x: entry.x, y: entry.y } : null;
   const selectedCocktailId = cocktail.id;
   // おすすめ一覧の結果があればその相性、地図から来たら地図で検索したときの相性
   const score = entry?.score ?? fromMap?.score ?? null;
