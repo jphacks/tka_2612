@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useLocation, useParams } from "react-router";
 import { type Cocktail, getCocktail } from "~/api/generated";
 import { SiteFooter, SiteHeader } from "~/components/site-chrome";
 import { baseTags, cardColor, englishName } from "~/lib/cocktail-display";
@@ -30,8 +30,36 @@ export function meta(_: Route.MetaArgs) {
   ];
 }
 
+// 地図（/cocktail_points）の詳細カードから来たときに、Link の state で渡される情報
+type FromMap = {
+  // 戻り先（地図の URL。検索の ?q= を含む）
+  backTo: string;
+  // 地図で検索した入力文との相性。検索していなければ null
+  score: number | null;
+};
+
+function readFromMap(state: unknown): FromMap | null {
+  if (
+    typeof state === "object" &&
+    state !== null &&
+    "backTo" in state &&
+    typeof state.backTo === "string" &&
+    "score" in state &&
+    (typeof state.score === "number" || state.score === null)
+  ) {
+    return { backTo: state.backTo, score: state.score };
+  }
+  return null;
+}
+
 export default function CocktailDetail() {
   const { cocktailId = "" } = useParams();
+  const fromMap = readFromMap(useLocation().state);
+  const isFromMap = fromMap !== null;
+  // 「戻る」の行き先。地図から来たら地図へ、それ以外はおすすめ一覧へ
+  const back = fromMap
+    ? { to: fromMap.backTo, label: "地図" }
+    : { to: "/cocktails", label: "おすすめ一覧" };
   const [cocktail, setCocktail] = useState<Cocktail | null>(null);
   const [loadState, setLoadState] = useState<
     "loading" | "ready" | "not-found" | "error"
@@ -46,25 +74,28 @@ export default function CocktailDetail() {
   const [sessionError, setSessionError] = useState("");
 
   useEffect(() => {
-    // 一覧で計算したおすすめの結果（相性とメニュー上の位置）を使う
-    try {
-      const currentSession = loadRecommendationSession();
-      setSession(currentSession);
-      const results = currentSession
-        ? loadRecommendationResults(currentSession.id)
-        : null;
-      const findEntry = (r: RecommendationResults) =>
-        r.recommendations.find((item) => item.cocktail.id === cocktailId) ??
-        null;
-      setEntry(results ? findEntry(results) : null);
-      // 一覧で位置を求め終わる前に開いたときは、ここで位置を待つ（問い合わせは1回にまとまる）
-      if (currentSession && results && !results.positionsLocated) {
-        locateRecommendations(currentSession, results).then((located) =>
-          setEntry(findEntry(located)),
-        );
+    // 一覧で計算したおすすめの結果（相性とメニュー上の位置）を使う。
+    // 地図から来たときは、前の写真の検索の結果を出さないよう読まない
+    if (!isFromMap) {
+      try {
+        const currentSession = loadRecommendationSession();
+        setSession(currentSession);
+        const results = currentSession
+          ? loadRecommendationResults(currentSession.id)
+          : null;
+        const findEntry = (r: RecommendationResults) =>
+          r.recommendations.find((item) => item.cocktail.id === cocktailId) ??
+          null;
+        setEntry(results ? findEntry(results) : null);
+        // 一覧で位置を求め終わる前に開いたときは、ここで位置を待つ（問い合わせは1回にまとまる）
+        if (currentSession && results && !results.positionsLocated) {
+          locateRecommendations(currentSession, results).then((located) =>
+            setEntry(findEntry(located)),
+          );
+        }
+      } catch {
+        setSessionError("検索情報を読み取れませんでした。");
       }
-    } catch {
-      setSessionError("検索情報を読み取れませんでした。");
     }
 
     getCocktail(cocktailId)
@@ -87,14 +118,14 @@ export default function CocktailDetail() {
       .catch(() => {
         setFavoriteError("お気に入りを読み込めませんでした。");
       });
-  }, [cocktailId]);
+  }, [cocktailId, isFromMap]);
 
   if (loadState === "loading") {
     return (
       <main className="site-shell detail-shell">
         <SiteHeader showNote={false}>
-          <Link className="topbar-link" to="/cocktails">
-            一覧に戻る <span aria-hidden="true">↗</span>
+          <Link className="topbar-link" to={back.to}>
+            {back.label}に戻る <span aria-hidden="true">↗</span>
           </Link>
         </SiteHeader>
         <p className="detail-page page-message">読み込んでいます…</p>
@@ -106,8 +137,8 @@ export default function CocktailDetail() {
     return (
       <main className="site-shell detail-shell">
         <SiteHeader showNote={false}>
-          <Link className="topbar-link" to="/cocktails">
-            一覧に戻る <span aria-hidden="true">↗</span>
+          <Link className="topbar-link" to={back.to}>
+            {back.label}に戻る <span aria-hidden="true">↗</span>
           </Link>
         </SiteHeader>
         <section className="detail-page page-message" role="alert">
@@ -116,8 +147,8 @@ export default function CocktailDetail() {
               ? "お酒が見つかりませんでした"
               : "お酒の情報を読み込めませんでした"}
           </h1>
-          <Link className="text-link" to="/cocktails">
-            おすすめ一覧に戻る
+          <Link className="text-link" to={back.to}>
+            {back.label}に戻る
           </Link>
         </section>
       </main>
@@ -128,6 +159,8 @@ export default function CocktailDetail() {
   const markerPosition =
     entry?.x != null && entry.y != null ? { x: entry.x, y: entry.y } : null;
   const selectedCocktailId = cocktail.id;
+  // おすすめ一覧の結果があればその相性、地図から来たら地図で検索したときの相性
+  const score = entry?.score ?? fromMap?.score ?? null;
 
   async function toggleFavorite() {
     setIsSaving(true);
@@ -149,14 +182,14 @@ export default function CocktailDetail() {
   return (
     <main className="site-shell detail-shell">
       <SiteHeader>
-        <Link className="topbar-link" to="/cocktails">
-          一覧に戻る <span aria-hidden="true">↗</span>
+        <Link className="topbar-link" to={back.to}>
+          {back.label}に戻る <span aria-hidden="true">↗</span>
         </Link>
       </SiteHeader>
 
       <article className="detail-page">
         <div className="detail-breadcrumb">
-          <Link to="/cocktails">おすすめ一覧</Link>
+          <Link to={back.to}>{back.label}</Link>
           <span aria-hidden="true">/</span>
           <span>{cocktail.name}</span>
           <span className="step-label">
@@ -238,8 +271,8 @@ export default function CocktailDetail() {
             </div>
             <div className="detail-match">
               <strong>
-                {entry ? Math.round(entry.score * 100) : "—"}
-                {entry && <small>%</small>}
+                {score !== null ? Math.round(score * 100) : "—"}
+                {score !== null && <small>%</small>}
               </strong>
               <span>あなたとの相性</span>
             </div>
@@ -298,8 +331,8 @@ export default function CocktailDetail() {
           )}
 
           <div className="detail-bottom-nav">
-            <Link className="text-link" to="/cocktails">
-              ← おすすめ一覧に戻る
+            <Link className="text-link" to={back.to}>
+              ← {back.label}に戻る
             </Link>
             {session?.query && <span>「{session.query}」からのおすすめ</span>}
           </div>
