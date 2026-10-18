@@ -28,6 +28,7 @@ import {
 } from "~/components/ui";
 import { baseTags, englishName } from "~/lib/cocktail-display";
 import { cx } from "~/lib/cx";
+import { detailLinkState } from "~/lib/detail-link";
 import {
   clearMenuScan,
   getMenuScanState,
@@ -450,7 +451,7 @@ function DetailCard({ cocktail, score, backTo, onClose }: DetailCardProps) {
         <TextLink
           className="shrink-0"
           to={`/cocktails/${cocktail.id}`}
-          state={{ backTo, score }}
+          state={detailLinkState(backTo, "地図", score)}
         >
           詳しく →
         </TextLink>

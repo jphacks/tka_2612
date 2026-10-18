@@ -18,6 +18,7 @@ import {
   TextLink,
 } from "~/components/ui";
 import { baseTags, drinkColor, englishName } from "~/lib/cocktail-display";
+import { readDetailLinkState } from "~/lib/detail-link";
 import {
   loadFavoriteCount,
   loadFavoriteIds,
@@ -45,37 +46,9 @@ export function meta(_: Route.MetaArgs) {
   ];
 }
 
-// 地図（/cocktail_points）やお気に入り（/favorites）から来たときに、Link の state で渡される情報
-type FromPage = {
-  // 戻り先（地図なら検索の ?q= を含む URL）
-  backTo: string;
-  // 戻るリンクに出す名前。省略すると「地図」
-  backLabel: string;
-  // 地図で検索した入力文との相性。検索していなければ null
-  score: number | null;
-};
-
-function readFromPage(state: unknown): FromPage | null {
-  if (
-    typeof state === "object" &&
-    state !== null &&
-    "backTo" in state &&
-    typeof state.backTo === "string" &&
-    "score" in state &&
-    (typeof state.score === "number" || state.score === null)
-  ) {
-    const backLabel =
-      "backLabel" in state && typeof state.backLabel === "string"
-        ? state.backLabel
-        : "地図";
-    return { backTo: state.backTo, backLabel, score: state.score };
-  }
-  return null;
-}
-
 export default function CocktailDetail() {
   const { cocktailId = "" } = useParams();
-  const fromPage = readFromPage(useLocation().state);
+  const fromPage = readDetailLinkState(useLocation().state);
   const isFromPage = fromPage !== null;
   // 「戻る」の行き先。地図やお気に入りから来たらそこへ、それ以外はおすすめ一覧へ
   const back = fromPage

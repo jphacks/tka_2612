@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { type Cocktail, listFavorites } from "~/api/generated";
+import type { Cocktail } from "~/api/generated";
 import { DrinkCard, DrinkList } from "~/components/drink-card";
 import {
   BackLink,
@@ -8,7 +8,8 @@ import {
   SiteShell,
 } from "~/components/site-chrome";
 import { Message, PageSub, PageTitle, TextLink } from "~/components/ui";
-import { getDeviceId } from "~/lib/favorites";
+import { detailLinkState } from "~/lib/detail-link";
+import { loadFavorites } from "~/lib/favorites";
 import type { Route } from "./+types/favorites";
 
 export function meta(_: Route.MetaArgs) {
@@ -31,14 +32,8 @@ export default function Favorites() {
   const [state, setState] = useState<LoadState>({ status: "loading" });
 
   useEffect(() => {
-    listFavorites({ device_id: getDeviceId() })
-      .then((response) =>
-        setState(
-          response.status === 200
-            ? { status: "ready", cocktails: response.data }
-            : { status: "error" },
-        ),
-      )
+    loadFavorites()
+      .then((cocktails) => setState({ status: "ready", cocktails }))
       .catch(() => setState({ status: "error" }));
   }, []);
 
@@ -70,11 +65,7 @@ export default function Favorites() {
                     key={cocktail.id}
                     cocktail={cocktail}
                     // 詳細ページの「戻る」で、この一覧に戻ってこられるようにする
-                    state={{
-                      backTo: "/favorites",
-                      backLabel: "お気に入り",
-                      score: null,
-                    }}
+                    state={detailLinkState("/favorites", "お気に入り")}
                     aside={
                       <span
                         className="text-neon text-xl text-shadow-halo"
