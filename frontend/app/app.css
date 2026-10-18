@@ -1101,6 +1101,382 @@ label {
   }
 }
 
+/* ===== バーの店長向けのトレンドレポート（/store） =====
+   利用者向けの夜のバーの配色とは分け、明るく落ち着いた業務用の見た目にする。
+   グラフの色は青1色（量の大小は濃淡）にして、数字を読みやすくする */
+body:has(.biz) {
+  background: #f6f6f3;
+}
+
+.biz {
+  --biz-page: #f6f6f3;
+  --biz-surface: #ffffff;
+  --biz-ink: #0b0b0b;
+  --biz-ink-2: #52514e;
+  --biz-muted: #898781;
+  --biz-grid: #e1e0d9;
+  --biz-border: rgb(11 11 11 / 10%);
+  --biz-accent: #2a78d6;
+  --biz-accent-soft: #cde2fb;
+  min-height: 100dvh;
+  color-scheme: light;
+  background: var(--biz-page);
+  color: var(--biz-ink);
+  font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans JP", sans-serif;
+}
+
+.biz-header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 18px max(20px, 50% - 560px);
+  border-bottom: 1px solid var(--biz-border);
+  background: var(--biz-surface);
+}
+
+.biz-brand {
+  margin: 0;
+  color: var(--biz-ink-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.biz-brand span {
+  margin-left: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--biz-accent-soft);
+  color: #1c5cab;
+  font-size: 11px;
+}
+
+.biz-header h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.biz-main {
+  width: min(1120px, 100% - 40px);
+  margin-inline: auto;
+  padding: 24px 0 64px;
+}
+
+/* 期間の切り替えは、集計の上に1行で置く */
+.biz-filter {
+  display: inline-flex;
+  margin-bottom: 20px;
+  padding: 3px;
+  border: 1px solid var(--biz-border);
+  border-radius: 8px;
+  background: var(--biz-surface);
+}
+
+.biz-filter button {
+  min-height: 34px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--biz-ink-2);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.biz-filter button:hover {
+  background: #f0efec;
+}
+
+.biz-filter button.is-active {
+  background: var(--biz-ink);
+  color: #fff;
+}
+
+.biz-body {
+  display: grid;
+  gap: 16px;
+  transition: opacity 160ms ease;
+}
+
+.biz-body.is-refreshing {
+  opacity: 0.5;
+}
+
+.biz-error {
+  color: #d03b3b;
+  font-size: 14px;
+}
+
+.biz-empty {
+  margin: 0;
+  color: var(--biz-muted);
+  font-size: 13px;
+}
+
+/* 指標 */
+.biz-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.biz-kpi,
+.biz-card {
+  padding: 18px 20px;
+  border: 1px solid var(--biz-border);
+  border-radius: 12px;
+  background: var(--biz-surface);
+}
+
+.biz-kpi-label {
+  margin: 0;
+  color: var(--biz-ink-2);
+  font-size: 13px;
+}
+
+.biz-kpi-value {
+  margin: 6px 0 0;
+  font-size: 32px;
+  font-weight: 650;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.biz-kpi-sub {
+  margin: 4px 0 0;
+  color: var(--biz-muted);
+  font-size: 12px;
+}
+
+.biz-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.biz-card h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.biz-caption {
+  margin: 4px 0 16px;
+  color: var(--biz-muted);
+  font-size: 12px;
+}
+
+/* 横棒グラフ。棒は細く、先だけ丸め、値は棒の先に書く */
+.biz-bars {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.biz-bars li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 7em minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 26px;
+}
+
+.biz-bar-label {
+  overflow: hidden;
+  color: var(--biz-ink-2);
+  font-size: 13px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.biz-bar-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-left: 1px solid var(--biz-grid);
+}
+
+.biz-bar {
+  height: 14px;
+  min-width: 2px;
+  border-radius: 0 4px 4px 0;
+  background: var(--biz-accent);
+  transition: filter 120ms ease;
+}
+
+.biz-bar-value {
+  color: var(--biz-ink-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.biz-bars li:hover .biz-bar {
+  filter: brightness(1.15);
+}
+
+.biz-tooltip {
+  position: absolute;
+  z-index: 1;
+  top: -34px;
+  left: 7em;
+  display: none;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--biz-ink);
+  color: #f0efec;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.biz-tooltip strong {
+  margin-right: 6px;
+  color: #fff;
+}
+
+.biz-bars li:hover .biz-tooltip {
+  display: block;
+}
+
+/* ワードクラウド。隣の横棒グラフと同じ高さのカードの中で、上下の中央に置く */
+.biz-card:has(.biz-cloud) {
+  display: flex;
+  flex-direction: column;
+}
+
+.biz-cloud {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-content: center;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 8px 0;
+  list-style: none;
+}
+
+.biz-cloud li {
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+/* 表 */
+.biz-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.biz-table th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--biz-grid);
+  color: var(--biz-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.biz-table td {
+  padding: 10px;
+  border-bottom: 1px solid #efeee9;
+}
+
+.biz-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.biz-table .is-num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.biz-rank {
+  width: 3em;
+  color: var(--biz-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.biz-muted {
+  color: var(--biz-ink-2);
+  font-size: 13px;
+}
+
+/* 数と、いちばん多いものに対する割合の棒 */
+.biz-meter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.biz-meter-track {
+  width: 96px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--biz-accent-soft);
+}
+
+.biz-meter-track span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--biz-accent);
+}
+
+@media (max-width: 760px) {
+  .biz-header {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .biz-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* 指標は縦に積むと長くなるので、3つを横に並べたまま小さくする */
+  .biz-kpis {
+    gap: 8px;
+  }
+
+  .biz-kpi {
+    padding: 12px;
+  }
+
+  .biz-kpi-label,
+  .biz-kpi-sub {
+    font-size: 11px;
+  }
+
+  .biz-kpi-value {
+    font-size: 22px;
+  }
+
+  .biz-meter-track {
+    width: 48px;
+  }
+
+  .biz-table td,
+  .biz-table th {
+    padding-inline: 6px;
+  }
+
+  /* 狭い画面では、補足の列（ベース）は省いて、お酒の名前を読みやすくする */
+  .biz-table .is-sub {
+    display: none;
+  }
+}
+
 /* スマホ。指で押しやすく、地図を広く使う */
 @media (max-width: 760px) {
   .topbar {
