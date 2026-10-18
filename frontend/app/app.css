@@ -397,6 +397,65 @@ label {
   font-size: 12px;
 }
 
+/* 選んだメニューの写真。読み取りの状態を出し、「探す」を押すまで画面は移らない */
+.ask-photo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 4px 12px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--glass);
+}
+
+.ask-photo img {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.ask-photo-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ask-photo-name {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ask-photo-status {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ask-photo-status.is-error {
+  color: #ff8fa8;
+}
+
+.ask-photo-remove {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 18px;
+}
+
 /* スマホのカメラアプリのように、画面の下中央にシャッターを置く。
    左は写真を選ぶボタン、右は地図へのボタン */
 .camera-dock {
