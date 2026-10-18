@@ -5,7 +5,8 @@ const RESULTS_KEY = "cocktail-tasukeru.recommendation-results";
 
 export type RecommendationEntry = {
   cocktail: Cocktail;
-  score: number;
+  // 入力文との相性。気分の入力がなく、相性を計算していないときは null
+  score: number | null;
   // メニューの写真で、このお酒が書かれていた行（写真なし・不明なら null）
   menuText: string | null;
 };
@@ -28,6 +29,7 @@ async function fetchRecommendations(
 ): Promise<RecommendationResults> {
   const names = session.recognizedMenuItems?.map(({ text }) => text) ?? [];
   const menuTextById = new Map<string, string>();
+  const menuCocktails: Cocktail[] = [];
   let unregistered: string[] = [];
 
   if (names.length > 0) {
@@ -37,6 +39,7 @@ async function fetchRecommendations(
     }
     for (const { name, cocktail } of matched.data.matched) {
       menuTextById.set(cocktail.id, name);
+      menuCocktails.push(cocktail);
     }
     unregistered = matched.data.unregistered;
   }
@@ -46,6 +49,22 @@ async function fetchRecommendations(
     : menuTextById.size > 0
       ? "menu"
       : "fallback";
+
+  // 気分の入力がないときは、相性を計算できないので、メニューに載っていた順に並べる。
+  // （おすすめ API は入力文を店舗向けの集計に記録するので、代わりの文を入れて呼ばない）
+  if (session.query === "") {
+    return {
+      sessionId: session.id,
+      recommendations: menuCocktails.map((cocktail) => ({
+        cocktail,
+        score: null,
+        menuText: menuTextById.get(cocktail.id) ?? null,
+      })),
+      unregistered,
+      source,
+    };
+  }
+
   const response = await recommend({
     query: session.query,
     cocktail_ids: source === "menu" ? [...menuTextById.keys()] : null,

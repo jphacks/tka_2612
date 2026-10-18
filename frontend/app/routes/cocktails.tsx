@@ -95,7 +95,7 @@ export default function Cocktails() {
         {session && result && (
           <>
             <h1 className="page-title" id="results-title">
-              「{session.query}」
+              {session.query ? `「${session.query}」` : "メニューのお酒"}
             </h1>
             <p className="page-sub">
               {session.menuImage && (
@@ -111,6 +111,15 @@ export default function Cocktails() {
               <p className="page-error">{session.ocrError}</p>
             )}
 
+            {result.recommendations.length === 0 && (
+              <div className="page-message">
+                <p>メニューからお酒を見つけられませんでした</p>
+                <Link className="text-link" to="/cocktail_points">
+                  地図で探す →
+                </Link>
+              </div>
+            )}
+
             <ol className="drink-list">
               {result.recommendations.map(({ cocktail, score }) => (
                 <li key={cocktail.id}>
@@ -121,10 +130,12 @@ export default function Cocktails() {
                       <p className="drink-en">{englishName(cocktail)}</p>
                       <p className="drink-desc">{cocktail.description}</p>
                     </div>
-                    <p className="score">
-                      {Math.round(score * 100)}
-                      <small>%</small>
-                    </p>
+                    {score !== null && (
+                      <p className="score">
+                        {Math.round(score * 100)}
+                        <small>%</small>
+                      </p>
+                    )}
                   </Link>
                 </li>
               ))}

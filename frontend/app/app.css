@@ -288,7 +288,7 @@ label {
   object-fit: cover;
 }
 
-/* ホーム */
+/* ホーム。下のシャッターに隠れないよう、下側をあけておく */
 .home-hero {
   display: flex;
   width: min(640px, 100% - 40px);
@@ -297,7 +297,7 @@ label {
   align-items: center;
   justify-content: center;
   margin-inline: auto;
-  padding: 16px 0 64px;
+  padding: 16px 0 200px;
   text-align: center;
 }
 
@@ -353,143 +353,28 @@ label {
   color: var(--faint);
 }
 
-.ask-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 4px 8px 12px;
-}
-
 .ask-bar {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 4px 0;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 12px 4px 2px;
   border-top: 1px solid var(--line);
 }
 
-.icon-button {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  color: var(--muted);
-  cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    color 160ms ease;
-}
-
-.icon-button:hover {
-  border-color: rgb(255 79 139 / 55%);
-  color: var(--ink);
-}
-
-.icon-button svg {
-  width: 20px;
-  height: 20px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.6;
-}
-
-/* メニューを撮るボタンは、いちばん使うので大きく光らせる */
-.icon-button-camera {
-  width: 60px;
-  height: 60px;
-  border-color: rgb(255 79 139 / 55%);
-  box-shadow:
-    0 0 18px rgb(255 79 139 / 30%),
-    inset 0 0 12px rgb(255 79 139 / 15%);
-  color: var(--ink);
-}
-
-.icon-button-camera svg {
-  width: 28px;
-  height: 28px;
-}
-
-/* 選んだ写真は、撮るボタンと同じ大きさで見せる */
-.photo-thumb {
-  position: relative;
-  width: 60px;
-  height: 60px;
-}
-
-/* ホームから、検索せずに全カクテルの地図へ */
-.map-link {
-  display: inline-flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 10px;
-  margin-top: 20px;
-  padding: 0 20px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--muted);
-  font-size: 14px;
-  text-decoration: none;
-  transition:
-    border-color 160ms ease,
-    color 160ms ease;
-}
-
-.map-link:hover {
-  border-color: rgb(255 79 139 / 55%);
-  color: var(--ink);
-}
-
-.map-link svg {
-  width: 20px;
-  height: 20px;
-  filter: drop-shadow(0 0 4px rgb(255 79 139 / 60%));
-}
-
-.map-link svg circle {
-  fill: currentColor;
-}
-
-.map-link svg path {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.2;
-}
-
-.photo-thumb img {
-  width: 100%;
-  height: 100%;
-  border: 1px solid rgb(255 79 139 / 55%);
-  border-radius: 12px;
-  object-fit: cover;
-}
-
-.photo-thumb button {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  display: grid;
-  width: 22px;
-  height: 22px;
-  place-items: center;
-  border: 0;
-  border-radius: 50%;
-  background: var(--ink);
-  color: var(--night);
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
+.ask-chips {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .ask-submit {
   display: inline-flex;
   height: 48px;
+  flex-shrink: 0;
   align-items: center;
   gap: 10px;
-  margin-left: auto;
   padding: 0 24px;
   border: 0;
   border-radius: 999px;
@@ -506,15 +391,143 @@ label {
   transform: translateY(-1px);
 }
 
-.ask-note,
 .ask-error {
   margin: 10px 8px 2px;
-  color: var(--faint);
+  color: #ff8fa8;
   font-size: 12px;
 }
 
-.ask-error {
-  color: #ff8fa8;
+/* スマホのカメラアプリのように、画面の下中央にシャッターを置く。
+   左は写真を選ぶボタン、右は地図へのボタン */
+.camera-dock {
+  position: fixed;
+  z-index: 10;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  justify-items: center;
+  padding: 40px max(32px, 50% - 180px) calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, rgb(18 15 34 / 92%) 45%);
+  pointer-events: none;
+}
+
+.camera-dock > * {
+  pointer-events: auto;
+}
+
+.dock-button {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  margin-bottom: 13px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 6%);
+  color: var(--ink);
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition: border-color 160ms ease;
+}
+
+.dock-button:hover {
+  border-color: rgb(255 79 139 / 55%);
+}
+
+.dock-button svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+.dock-button svg circle {
+  fill: currentColor;
+  stroke: none;
+}
+
+.shutter-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+/* カメラアプリのモード名のように、シャッターの上に何を撮るかを出す */
+.shutter-mode {
+  color: var(--sunset);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 8px rgb(255 138 92 / 60%);
+}
+
+.shutter {
+  position: relative;
+  display: block;
+  width: 78px;
+  height: 78px;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 20%),
+    0 0 32px rgb(255 79 139 / 50%);
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+
+.shutter::after {
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: var(--glow);
+  box-shadow: inset 0 0 12px rgb(255 255 255 / 30%);
+  content: "";
+}
+
+/* 押せることが伝わるよう、シャッターのまわりに光の輪を広げ続ける */
+.shutter::before {
+  position: absolute;
+  inset: -10px;
+  border: 2px solid rgb(255 79 139 / 60%);
+  border-radius: 50%;
+  content: "";
+  animation: shutter-pulse 2.4s ease-out infinite;
+}
+
+.shutter:active {
+  transform: scale(0.94);
+}
+
+/* 写真の入力は見えないので、キーボードで選んだときは隣のボタンを囲む */
+#menu-photo:focus-visible ~ .dock-button:first-of-type,
+#menu-camera:focus-visible ~ .shutter-wrap .shutter {
+  outline: 2px solid var(--neon);
+  outline-offset: 4px;
+}
+
+.dock-note {
+  grid-column: 1 / -1;
+  margin: 10px 0 0;
+  color: var(--faint);
+  font-size: 11px;
+}
+
+@keyframes shutter-pulse {
+  from {
+    opacity: 0.9;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.35);
+  }
 }
 
 /* おすすめ一覧 */
@@ -1094,18 +1107,58 @@ label {
   }
 
   .home-hero {
+    min-height: calc(100dvh - 60px);
     justify-content: flex-start;
-    padding-top: 6vh;
+    padding-top: 3vh;
   }
 
   .home-glass {
-    width: 72px;
-    height: 84px;
-    margin-bottom: 14px;
+    width: 64px;
+    height: 74px;
+    margin-bottom: 12px;
   }
 
   .home-hero h1 {
-    margin-bottom: 24px;
+    margin-bottom: 20px;
+    font-size: clamp(36px, 11vw, 48px);
+  }
+
+  /* 入力例は1行にして横にスクロールし、「探す」は下に広げて押しやすくする */
+  .ask-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ask-chips {
+    flex-wrap: nowrap;
+    margin-inline: -16px;
+    padding-inline: 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .ask-chips .chip {
+    flex-shrink: 0;
+  }
+
+  .ask-submit {
+    justify-content: center;
+  }
+}
+
+/* 背の低いスマホ（iPhone SE など）では、グラスの絵を省いて入力欄をシャッターの上に収める */
+@media (max-width: 760px) and (max-height: 720px) {
+  .home-glass {
+    display: none;
+  }
+
+  .home-hero h1 {
+    margin-bottom: 16px;
+    font-size: 34px;
+  }
+
+  .ask textarea {
+    font-size: 16px;
   }
 
   .drink-card {
