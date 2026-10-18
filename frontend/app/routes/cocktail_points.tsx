@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { BASE_GROUPS, baseLabel } from "../cocktails/bases";
 import { CocktailCloud, type FocusRequest } from "../cocktails/CocktailCloud";
 import type { Layout } from "../cocktails/cloudScene";
@@ -47,7 +48,10 @@ function errorMessage(error: unknown): string {
 }
 
 export default function CocktailPoints() {
-  const [query, setQuery] = useState("");
+  // ホームから来たときは ?q= に入力文が入っている
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialQueryRef = useRef(searchParams.get("q")?.trim() ?? "");
+  const [query, setQuery] = useState(initialQueryRef.current);
   const [points, setPoints] = useState<CocktailPoint[]>([]);
   const [layout, setLayout] = useState<Layout | null>(null);
   // 検索欄の上に出す、読み込み・計算の状況や検索結果の説明
@@ -72,19 +76,32 @@ export default function CocktailPoints() {
   useEffect(() => {
     const client = createUmapClient();
     umapRef.current = client;
-    const request = ++requestRef.current;
     let cancelled = false;
     (async () => {
       try {
         const loaded = await fetchCocktailPoints();
         if (cancelled) return;
         setPoints(loaded);
-        setStatus("マップを計算しています…");
+
+        // 入力文があれば、全件の配置より先に検索結果を出す（UMAP は1件ずつ順に計算されるため）
+        const initialQuery = initialQueryRef.current;
+        const found =
+          initialQuery !== "" &&
+          (await runSearchRef.current?.(
+            initialQuery,
+            new Map(loaded.map((p) => [p.id, p])),
+            client,
+          ));
+        if (cancelled) return;
+
+        // 検索しなかった・失敗したときは全件を表示する（クリアしたときにも使う）
+        const request = requestRef.current;
+        if (!found) setStatus("マップを計算しています…");
         allLayoutRef.current = projectAll(client, loaded);
         const all = await allLayoutRef.current;
-        if (cancelled || request !== requestRef.current) return;
+        if (cancelled || found || request !== requestRef.current) return;
         setLayout(all);
-        setStatus(null);
+        if (initialQuery === "") setStatus(null);
       } catch (error) {
         if (!cancelled) setStatus(errorMessage(error));
       }
@@ -110,40 +127,37 @@ export default function CocktailPoints() {
   };
 
   const showAll = async () => {
-    const allLayout = allLayoutRef.current;
-    if (!allLayout) return;
+    const client = umapRef.current;
+    if (!client || points.length === 0) return;
     const request = ++requestRef.current;
-    const all = await allLayout;
+    if (!allLayoutRef.current) setStatus("マップを計算しています…");
+    allLayoutRef.current ??= projectAll(client, points);
+    const all = await allLayoutRef.current;
     if (request !== requestRef.current) return;
     setLayout(all);
     setStatus(null);
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    const text = query.trim();
-    if (text === "") {
-      handleClear();
-      return;
-    }
-    const client = umapRef.current;
-    if (!client || points.length === 0) return;
-
+  // 入力に近いカクテルだけを集め、その中で UMAP をかけ直して表示する。表示できたら true
+  const runSearch = async (
+    text: string,
+    byId: Map<string, CocktailPoint>,
+    client: UmapClient,
+  ): Promise<boolean> => {
     const request = ++requestRef.current;
     setStatus("検索しています…");
     try {
-      // 入力に近いカクテルだけを集め、その中で UMAP をかけ直す
-      const hit = await searchNearby(text, pointsById);
-      if (request !== requestRef.current) return;
+      const hit = await searchNearby(text, byId);
+      if (request !== requestRef.current) return false;
       if (hit.cocktails.length === 0) {
         setStatus("近いカクテルが見つかりませんでした");
-        return;
+        return false;
       }
       setStatus("マップを計算しています…");
       const positions = await client.project(
         hit.cocktails.map((c) => c.vector),
       );
-      if (request !== requestRef.current) return;
+      if (request !== requestRef.current) return false;
       const best = hit.cocktails[0].id;
       setLayout({
         cocktails: hit.cocktails,
@@ -156,9 +170,30 @@ export default function CocktailPoints() {
       setBestMatchId(best);
       setSelectedId(best);
       focusOn(best, true);
+      return true;
     } catch (error) {
       if (request === requestRef.current) setStatus(errorMessage(error));
+      return false;
     }
+  };
+  // 読み込み時の effect から最新の runSearch を呼ぶための参照
+  const runSearchRef = useRef<typeof runSearch | null>(null);
+  useEffect(() => {
+    runSearchRef.current = runSearch;
+  });
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const text = query.trim();
+    if (text === "") {
+      handleClear();
+      return;
+    }
+    const client = umapRef.current;
+    if (!client || points.length === 0) return;
+    // 再読み込みや共有をしても同じ検索結果になるよう、入力文を URL に残す
+    setSearchParams({ q: text }, { replace: true });
+    await runSearch(text, pointsById, client);
   };
 
   const handleClear = () => {
@@ -166,6 +201,7 @@ export default function CocktailPoints() {
     setScores(null);
     setBestMatchId(null);
     setSelectedId(null);
+    setSearchParams({}, { replace: true });
     showAll();
   };
 
@@ -311,6 +347,12 @@ function DetailCard({ cocktail, score, onClose }: DetailCardProps) {
       <p className="mt-2 text-xs text-slate-400">
         材料: {cocktail.ingredients.join("・")}
       </p>
+      <Link
+        to={`/cocktails/${cocktail.id}`}
+        className="mt-3 inline-block text-sm text-sky-300 hover:text-sky-200"
+      >
+        詳しく見る →
+      </Link>
     </section>
   );
 }

@@ -58,22 +58,25 @@ export default function Home() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // メニューの写真がなければ、全カクテルの中から入力文に近いものを点群で見せる
+    if (!imageFile) {
+      navigate(`/cocktail_points?q=${encodeURIComponent(preference.trim())}`);
+      return;
+    }
     setIsSubmitting(true);
     setSubmitError("");
     try {
       let recognizedMenuItems: RecognizedMenuItem[] | null = null;
       let ocrError: string | null = null;
 
-      if (imageFile) {
-        setOcrProgress("メニューを読み取っています…");
-        try {
-          recognizedMenuItems = await recognizeMenuImage(imageFile);
-        } catch (error) {
-          ocrError =
-            error instanceof Error
-              ? error.message
-              : "メニュー画像の文字認識に失敗しました。";
-        }
+      setOcrProgress("メニューを読み取っています…");
+      try {
+        recognizedMenuItems = await recognizeMenuImage(imageFile);
+      } catch (error) {
+        ocrError =
+          error instanceof Error
+            ? error.message
+            : "メニュー画像の文字認識に失敗しました。";
       }
 
       await saveRecommendationSession(
@@ -318,7 +321,9 @@ export default function Home() {
               →
             </span>
           </button>
-          <p className="demo-note">写真がなくてもカタログ全体から探せます</p>
+          <p className="demo-note">
+            写真がなければ、全カクテルの地図から近いものを探せます
+          </p>
           {submitError && (
             <p className="field-error request-error" role="alert">
               {submitError}
