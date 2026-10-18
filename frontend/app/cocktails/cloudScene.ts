@@ -23,10 +23,11 @@ const FLIGHT_MS = 900;
 const FADE_IN_MS = 400;
 const PICK_RADIUS_PX = 12;
 const CLICK_MOVE_TOLERANCE_PX = 6;
-// 下部の UI と重ならないよう、表示の中心を画面の高さに対してこの割合だけ上にずらす。
-// 縦長の画面（スマホ）は地図が低く、下部の UI の割合が大きいので、より上にずらす
-const VIEW_SHIFT_UP = 0.12;
-const PORTRAIT_VIEW_SHIFT_UP = 0.2;
+// 全体を表示するときは点群の重心を地図の中央に置く。
+// 1つの点に近づくときだけ、下部の UI と重ならないよう、その点を画面の高さのこの割合だけ上に置く。
+// 縦長の画面（スマホ）は地図が低く、下部の UI の割合が大きいので、より上に置く
+const FOCUS_SHIFT_UP = 0.12;
+const PORTRAIT_FOCUS_SHIFT_UP = 0.2;
 // 全体表示で点群を収める、画面の高さに対する割合
 const FIT_HEIGHT = 0.7;
 // 下部の UI に隠れずに見える範囲（画面の高さに対する割合）
@@ -95,7 +96,9 @@ export function createCloudScene(
   let indexById = new Map<string, number>();
   // 関連度の低い点から描き、関連度の高い点を上に重ねる
   let drawOrder: number[] = [];
-  let bounds = { minX: -1, maxX: 1, minY: -1, maxY: 1 };
+  // 点群の重心と、重心からいちばん遠い点までの距離（横・縦）
+  let centroid = { x: 0, y: 0 };
+  let reach = { x: 1, y: 1 };
 
   let width = 1;
   let height = 1;
@@ -114,8 +117,8 @@ export function createCloudScene(
     id === null ? -1 : (indexById.get(id) ?? -1);
   const scale = () => fitScale * view.zoom;
   const isPortrait = () => height > width;
-  const originY = () =>
-    height * (0.5 - (isPortrait() ? PORTRAIT_VIEW_SHIFT_UP : VIEW_SHIFT_UP));
+  // 表示の中心（view.x, view.y）を置く、地図の上の位置。地図のちょうど中央
+  const originY = () => height / 2;
   const screenX = (i: number) => (xs[i] - view.x) * scale() + width / 2;
   const screenY = (i: number) => (ys[i] - view.y) * scale() + originY();
   const isOnScreen = (sx: number, sy: number, margin: number) =>
@@ -134,9 +137,10 @@ export function createCloudScene(
     );
   };
 
+  // 重心を中央に置いたまま、いちばん遠い点まで画面に収まる倍率にする
   const updateFitScale = () => {
-    const spanX = Math.max(bounds.maxX - bounds.minX, 1e-6);
-    const spanY = Math.max(bounds.maxY - bounds.minY, 1e-6);
+    const spanX = Math.max(reach.x * 2, 1e-6);
+    const spanY = Math.max(reach.y * 2, 1e-6);
     fitScale = Math.min((width * 0.9) / spanX, (height * FIT_HEIGHT) / spanY);
   };
 
@@ -418,15 +422,18 @@ export function createCloudScene(
         .sort((a, b) => relevance[a] - relevance[b]);
       hoveredIndex = -1;
 
-      bounds = {
-        minX: Math.min(...xs),
-        maxX: Math.max(...xs),
-        minY: Math.min(...ys),
-        maxY: Math.max(...ys),
+      const count = Math.max(xs.length, 1);
+      centroid = {
+        x: xs.reduce((sum, x) => sum + x, 0) / count,
+        y: ys.reduce((sum, y) => sum + y, 0) / count,
+      };
+      reach = {
+        x: Math.max(0, ...xs.map((x) => Math.abs(x - centroid.x))),
+        y: Math.max(0, ...ys.map((y) => Math.abs(y - centroid.y))),
       };
       updateFitScale();
-      view.x = (bounds.minX + bounds.maxX) / 2;
-      view.y = (bounds.minY + bounds.maxY) / 2;
+      view.x = centroid.x;
+      view.y = centroid.y;
       view.zoom = 1;
       flight = null;
       fadeStartedAt = performance.now();
@@ -455,12 +462,15 @@ export function createCloudScene(
             height * (isPortrait() ? PORTRAIT_VISIBLE_BOTTOM : VISIBLE_BOTTOM);
         if (visible) return;
       }
+      const zoom = zoomIn ? Math.max(view.zoom, FOCUS_ZOOM) : view.zoom;
+      // 点が中央より少し上に来るよう、表示の中心をその分だけ下にずらす
+      const shiftUp = isPortrait() ? PORTRAIT_FOCUS_SHIFT_UP : FOCUS_SHIFT_UP;
       flight = {
         from: { ...view },
         to: {
           x: xs[index],
-          y: ys[index],
-          zoom: zoomIn ? Math.max(view.zoom, FOCUS_ZOOM) : view.zoom,
+          y: ys[index] + (height * shiftUp) / (fitScale * zoom),
+          zoom,
         },
         startedAt: performance.now(),
       };
