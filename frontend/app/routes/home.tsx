@@ -53,11 +53,7 @@ export default function Home() {
 
   return (
     <main className="site-shell">
-      <SiteHeader>
-        <Link className="topbar-link" to="/trends">
-          みんなの好み
-        </Link>
-      </SiteHeader>
+      <SiteHeader />
 
       <section className="home-hero">
         <NeonGlass color="#ff8a5c" className="home-glass" />
