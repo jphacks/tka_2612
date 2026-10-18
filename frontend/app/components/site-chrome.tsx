@@ -5,9 +5,9 @@ import { Link } from "react-router";
 export function SiteHeader({ children }: { children?: ReactNode }) {
   return (
     <header className="topbar">
-      <Link className="brand" to="/" aria-label="SIP ホーム">
+      <Link className="brand" to="/" aria-label="カクテルタスケル ホーム">
         <span className="brand-mark" aria-hidden="true" />
-        SIP<span className="brand-period">.</span>
+        カクテルタスケル
       </Link>
       {children}
     </header>

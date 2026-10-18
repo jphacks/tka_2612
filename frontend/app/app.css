@@ -103,11 +103,6 @@ label {
     0 0 24px rgb(255 79 139 / 60%);
 }
 
-.brand-period {
-  margin-left: -10px;
-  color: var(--neon);
-}
-
 .topbar-link {
   padding: 10px 0;
   color: var(--muted);

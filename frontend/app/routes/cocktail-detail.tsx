@@ -21,7 +21,7 @@ import type { Route } from "./+types/cocktail-detail";
 
 export function meta(_: Route.MetaArgs) {
   return [
-    { title: "一杯 — SIP" },
+    { title: "一杯 — カクテルタスケル" },
     {
       name: "description",
       content: "気になる一杯の味わいや材料を詳しく紹介します。",

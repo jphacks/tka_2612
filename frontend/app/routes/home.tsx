@@ -7,7 +7,7 @@ import type { Route } from "./+types/home";
 
 export function meta(_: Route.MetaArgs) {
   return [
-    { title: "SIP — 今夜の一杯を" },
+    { title: "カクテルタスケル — 今夜の一杯を" },
     {
       name: "description",
       content:

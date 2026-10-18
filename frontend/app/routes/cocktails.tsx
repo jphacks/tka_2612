@@ -15,7 +15,7 @@ import type { Route } from "./+types/cocktails";
 
 export function meta(_: Route.MetaArgs) {
   return [
-    { title: "おすすめ — SIP" },
+    { title: "おすすめ — カクテルタスケル" },
     {
       name: "description",
       content: "今の気分に合うお酒をランキングで紹介します。",

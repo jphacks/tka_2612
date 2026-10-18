@@ -28,7 +28,7 @@ import type { Route } from "./+types/cocktail_points";
 
 export function meta(_: Route.MetaArgs) {
   return [
-    { title: "カクテルの地図 — SIP" },
+    { title: "カクテルの地図 — カクテルタスケル" },
     {
       name: "description",
       content: "好みの味やお酒の名前から、カクテルを地図のように探せます",
