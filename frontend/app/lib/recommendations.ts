@@ -1,4 +1,5 @@
-import { type Cocktail, matchMenu, recommend } from "~/api/generated";
+import { type Cocktail, recommend } from "~/api/generated";
+import { locateOnMenu } from "./ocr";
 import type { RecommendationSession } from "./recommendation-session";
 
 const RESULTS_KEY = "sip.recommendation-results";
@@ -6,8 +7,11 @@ const RESULTS_KEY = "sip.recommendation-results";
 export type RecommendationEntry = {
   cocktail: Cocktail;
   score: number;
-  // メニューの写真で、このお酒が書かれていた行（写真なし・不明なら null）
+  // メニューの写真で、このお酒が書かれていた名前（写真なし・メニュー外なら null）
   menuText: string | null;
+  // メニューの写真上の位置（写真の幅・高さに対する %）。求めていない・見つからないなら null
+  x: number | null;
+  y: number | null;
 };
 
 export type RecommendationResults = {
@@ -16,36 +20,30 @@ export type RecommendationResults = {
   unregistered: string[];
   // menu: メニュー内から / all: 写真なしで全体から / fallback: メニューのお酒を特定できず全体から
   source: "menu" | "all" | "fallback";
+  // メニュー上の位置を求め終えたか（求める必要がないときも true）
+  positionsLocated: boolean;
 };
 
 const RECOMMEND_ERRORS: Record<number, string> = {
   503: "おすすめの計算が混み合っています。少し待ってからもう一度お試しください。",
 };
 
-// 写真から読み取った名前をデータベースのお酒と照合し、その中から入力文に合うお酒を選ぶ
+// 写真を選んだときに照合したメニューのお酒の中から、入力文に合うお酒を選ぶ
 async function fetchRecommendations(
   session: RecommendationSession,
 ): Promise<RecommendationResults> {
-  const names = session.recognizedMenuItems?.map(({ text }) => text) ?? [];
-  const menuTextById = new Map<string, string>();
-  let unregistered: string[] = [];
-
-  if (names.length > 0) {
-    const matched = await matchMenu({ names });
-    if (matched.status !== 200) {
-      throw new Error("メニューのお酒を照合できませんでした。");
-    }
-    for (const { name, cocktail } of matched.data.matched) {
-      menuTextById.set(cocktail.id, name);
-    }
-    unregistered = matched.data.unregistered;
-  }
-
+  const menuTextById = new Map(
+    session.menuMatch?.matched.map(({ cocktailId, text }) => [
+      cocktailId,
+      text,
+    ]) ?? [],
+  );
   const source: RecommendationResults["source"] = !session.menuImage
     ? "all"
     : menuTextById.size > 0
       ? "menu"
       : "fallback";
+
   const response = await recommend({
     query: session.query,
     cocktail_ids: source === "menu" ? [...menuTextById.keys()] : null,
@@ -63,10 +61,13 @@ async function fetchRecommendations(
         cocktail,
         score,
         menuText: menuTextById.get(cocktail.id) ?? null,
+        x: null,
+        y: null,
       }),
     ),
-    unregistered,
+    unregistered: session.menuMatch?.unregistered ?? [],
     source,
+    positionsLocated: source !== "menu",
   };
 }
 
@@ -83,8 +84,14 @@ function isRecommendationResults(
     "unregistered" in value &&
     Array.isArray(value.unregistered) &&
     "source" in value &&
-    typeof value.source === "string"
+    typeof value.source === "string" &&
+    "positionsLocated" in value &&
+    typeof value.positionsLocated === "boolean"
   );
+}
+
+function saveResults(results: RecommendationResults): void {
+  sessionStorage.setItem(RESULTS_KEY, JSON.stringify(results));
 }
 
 // 保存してあるこの検索の結果。なければ null
@@ -107,6 +114,46 @@ export async function getRecommendationResults(
   const saved = loadRecommendationResults(session.id);
   if (saved) return saved;
   const results = await fetchRecommendations(session);
-  sessionStorage.setItem(RESULTS_KEY, JSON.stringify(results));
+  saveResults(results);
   return results;
+}
+
+// 検索ごとに、位置を求める処理を1回にまとめる（一覧と詳細から同時に呼ばれても1回だけ）
+const locating = new Map<string, Promise<RecommendationResults>>();
+
+// おすすめに選ばれたメニュー内のお酒（5件まで）だけ、メニューの写真上の位置を求めて保存する。
+// 位置を求められなくても、おすすめはそのまま使えるので、失敗したら位置なしで返す
+export function locateRecommendations(
+  session: RecommendationSession,
+  results: RecommendationResults,
+): Promise<RecommendationResults> {
+  if (results.positionsLocated || !session.menuImage) {
+    return Promise.resolve(results);
+  }
+  const inFlight = locating.get(session.id);
+  if (inFlight) return inFlight;
+
+  const texts = results.recommendations.flatMap(({ menuText }) =>
+    menuText ? [menuText] : [],
+  );
+  // 写真は、検索時に保存した縮小版（data URL）をそのまま送る
+  const promise = locateOnMenu(session.menuImage, texts)
+    .then((positions) => {
+      const located: RecommendationResults = {
+        ...results,
+        recommendations: results.recommendations.map((entry) => {
+          const position = entry.menuText
+            ? positions.get(entry.menuText)
+            : undefined;
+          return { ...entry, x: position?.x ?? null, y: position?.y ?? null };
+        }),
+        positionsLocated: true,
+      };
+      saveResults(located);
+      return located;
+    })
+    .catch(() => results)
+    .finally(() => locating.delete(session.id));
+  locating.set(session.id, promise);
+  return promise;
 }

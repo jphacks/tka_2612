@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { SiteFooter, SiteHeader } from "~/components/site-chrome";
-import { startMenuScan } from "~/lib/menu-scan-task";
+import {
+  discardPreparedMenuScan,
+  prepareMenuScan,
+  startMenuScan,
+} from "~/lib/menu-scan-task";
 import type { Route } from "./+types/home";
 
 export function meta(_: Route.MetaArgs) {
@@ -43,6 +47,13 @@ export default function Home() {
       return;
     }
     setImageFile(file);
+    // ボタンを押す前に読み取りと照合を始めて、待ち時間を減らす
+    prepareMenuScan(file);
+  }
+
+  function removeImage() {
+    setImageFile(null);
+    discardPreparedMenuScan();
   }
 
   // 写真の選択・撮影のどちらでも使う。同じ写真を選び直せるよう、選択をリセットする
@@ -202,9 +213,7 @@ export default function Home() {
                 </div>
                 <button
                   className="remove-image"
-                  onClick={() => {
-                    setImageFile(null);
-                  }}
+                  onClick={removeImage}
                   type="button"
                   aria-label="選択した写真を削除"
                 >
@@ -259,7 +268,8 @@ export default function Home() {
             )}
             <p className="privacy-note">
               <span aria-hidden="true">◈</span>{" "}
-              写真はメニューの読み取りのため、Google の AI（Gemini）に送信します
+              写真を選ぶと、メニューの読み取りのため Google の
+              AI（Gemini）に送信します
             </p>
           </div>
 
