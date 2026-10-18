@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { NeonGlass } from "~/components/neon-glass";
 import { SiteHeader } from "~/components/site-chrome";
-import { startMenuScan } from "~/lib/menu-scan-task";
+import {
+  discardPreparedMenuScan,
+  prepareMenuScan,
+  startMenuScan,
+} from "~/lib/menu-scan-task";
 import type { Route } from "./+types/home";
 
 export function meta(_: Route.MetaArgs) {
@@ -36,11 +40,40 @@ const SUGGESTIONS = [
   "昭和の喫茶店みたいな味",
 ];
 
+// 選んだ写真の読み取りの状態（入力欄の下に表示する）
+type ScanStatus =
+  | { kind: "reading" }
+  | { kind: "done"; count: number }
+  | { kind: "failed"; message: string };
+
+function scanStatusText(status: ScanStatus): string {
+  if (status.kind === "reading") return "メニューを読み取っています…";
+  if (status.kind === "failed") return status.message;
+  return status.count > 0
+    ? `読み取りました（登録済みのお酒 ${status.count}件）`
+    : "読み取りました（登録済みのお酒は見つかりませんでした）";
+}
+
 export default function Home() {
   const navigate = useNavigate();
   const [preference, setPreference] = useState("");
   const [imageError, setImageError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [scanStatus, setScanStatus] = useState<ScanStatus | null>(null);
+  // 読み取り中に写真を変えた・外したとき、古い読み取りの結果を表示しないために使う
+  const imageFileRef = useRef<File | null>(null);
+
+  useEffect(() => {
+    if (!imageFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(imageFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imageFile]);
 
   // 地図のページへ移る。メニューの写真があれば読み取りを始め、終わるまで地図で待てるようにする。
   // 気分の入力は空でもよい（空なら全カクテルの地図を開く）
@@ -54,20 +87,37 @@ export default function Home() {
     );
   }
 
-  // 写真を撮る・選ぶ・ドロップしたら、そのまま探し始める
-  function searchWithImage(file: File | undefined) {
+  // 写真を撮る・選ぶ・ドロップしたら、読み取りだけを始める（画面は「探す」を押すまで移らない）
+  function selectImage(file: File | undefined) {
     setImageError("");
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       setImageError("画像ファイルを選んでください");
       return;
     }
-    search(file);
+    imageFileRef.current = file;
+    setImageFile(file);
+    setScanStatus({ kind: "reading" });
+    prepareMenuScan(file).then(({ menuMatch, error }) => {
+      if (imageFileRef.current !== file) return;
+      setScanStatus(
+        error
+          ? { kind: "failed", message: error }
+          : { kind: "done", count: menuMatch?.matched.length ?? 0 },
+      );
+    });
+  }
+
+  function removeImage() {
+    imageFileRef.current = null;
+    setImageFile(null);
+    setScanStatus(null);
+    discardPreparedMenuScan();
   }
 
   // 同じ写真を選び直せるよう、選択をリセットする
   function handleFileInput(event: React.ChangeEvent<HTMLInputElement>) {
-    searchWithImage(event.currentTarget.files?.[0]);
+    selectImage(event.currentTarget.files?.[0]);
     event.currentTarget.value = "";
   }
 
@@ -87,7 +137,8 @@ export default function Home() {
           className={`ask${isDragging ? " is-dragging" : ""}`}
           onSubmit={(event) => {
             event.preventDefault();
-            search(null);
+            // 選んだ写真があれば、始めておいた読み取りを使って探す
+            search(imageFile);
           }}
           onDragOver={(event) => {
             event.preventDefault();
@@ -97,7 +148,7 @@ export default function Home() {
           onDrop={(event) => {
             event.preventDefault();
             setIsDragging(false);
-            searchWithImage(event.dataTransfer.files[0]);
+            selectImage(event.dataTransfer.files[0]);
           }}
         >
           <textarea
@@ -109,6 +160,28 @@ export default function Home() {
             aria-label="飲みたい味や気分"
             rows={2}
           />
+          {imageFile && previewUrl && scanStatus && (
+            <div className="ask-photo">
+              <img src={previewUrl} alt="選んだメニューの写真" />
+              <div className="ask-photo-text">
+                <span className="ask-photo-name">{imageFile.name}</span>
+                <span
+                  className={`ask-photo-status${scanStatus.kind === "failed" ? " is-error" : ""}`}
+                  aria-live="polite"
+                >
+                  {scanStatusText(scanStatus)}
+                </span>
+              </div>
+              <button
+                className="ask-photo-remove"
+                onClick={removeImage}
+                type="button"
+                aria-label="写真を外す"
+              >
+                ×
+              </button>
+            </div>
+          )}
           <div className="ask-bar">
             <div className="ask-chips">
               {SUGGESTIONS.map((suggestion) => (
@@ -165,7 +238,7 @@ export default function Home() {
             メニュー
           </span>
           <label className="shutter" htmlFor="menu-camera">
-            <span className="sr-only">メニューを撮って探す</span>
+            <span className="sr-only">メニューを撮る</span>
           </label>
         </div>
         <Link className="dock-button" to="/cocktail_points">
