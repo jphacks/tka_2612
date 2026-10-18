@@ -86,9 +86,18 @@ export function startMenuScan(query: string, imageFile: File): void {
   (async () => {
     // 読み取れなくても、おすすめ一覧で全体から探せるよう検索情報は保存する
     const { menuMatch, error: ocrError } = await outcome;
+    // 読み取り中に新しい読み取りを始めた・閉じたときは、古い結果を保存しない
+    // （保存すると、新しい検索の写真と照合結果を古いもので上書きしてしまう）
+    if (scanId !== currentScanId) return;
     try {
-      await saveRecommendationSession(query, imageFile, menuMatch, ocrError);
-      if (scanId === currentScanId) {
+      const saved = await saveRecommendationSession(
+        query,
+        imageFile,
+        menuMatch,
+        ocrError,
+        () => scanId === currentScanId,
+      );
+      if (saved) {
         update({ status: "done", query, previewUrl });
       }
     } catch {
