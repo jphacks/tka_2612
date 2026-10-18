@@ -29,9 +29,15 @@ const VIEW_SHIFT_UP = 0.12;
 const FIT_HEIGHT = 0.7;
 // 下部の UI に隠れずに見える範囲（画面の高さに対する割合）
 const VISIBLE_BOTTOM = 0.6;
-// 検索で最も一致した点の色。ベース酒の色と紛れないものにする
-const BEST_MATCH_COLOR = "#00ffa3";
-const LABEL_FONT = "12px Inter, ui-sans-serif, system-ui, sans-serif";
+// 色は app.css の SIP の配色（--ink・--rust・--paper）に合わせる。
+// 検索で最も一致した点は、ベース酒の色と紛れないよう文字色（濃い茶）で塗る
+const BEST_MATCH_COLOR = "#332a27";
+const SELECTED_RING_COLOR = "#a94f36";
+const LABEL_COLOR = "#332a27";
+// 名前が点や線に重なっても読めるよう、背景色で縁取る
+const LABEL_HALO_COLOR = "#fffdfa";
+const LABEL_FONT =
+  '12px Inter, "Noto Sans JP", ui-sans-serif, system-ui, sans-serif';
 const PINNED_LABEL_FONT = `600 ${LABEL_FONT}`;
 
 // 表示するカクテルと、UMAP で求めた2次元座標
@@ -154,7 +160,7 @@ export function createCloudScene(
     ctx.arc(sx, sy, radius, 0, Math.PI * 2);
     ctx.fill();
     if (isSelected) {
-      ctx.strokeStyle = "#ffffff";
+      ctx.strokeStyle = SELECTED_RING_COLOR;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(sx, sy, radius + 3, 0, Math.PI * 2);
@@ -189,9 +195,10 @@ export function createCloudScene(
     const zoomFade = Math.min(1, view.zoom - LABEL_ZOOM + 0.3);
     const placed: Rect[] = [];
     ctx.textBaseline = "middle";
-    ctx.shadowColor = "rgb(0 0 0 / 0.9)";
-    ctx.shadowBlur = 3;
-    ctx.shadowOffsetY = 1;
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = LABEL_HALO_COLOR;
+    ctx.fillStyle = LABEL_COLOR;
     for (const i of [...pinned, ...others.slice(0, 200)]) {
       if (placed.length >= MAX_LABELS + pinned.length) break;
       const isPinned = pinned.includes(i);
@@ -207,10 +214,9 @@ export function createCloudScene(
       placed.push(rect);
       const alpha = isPinned ? 1 : zoomFade * (0.35 + 0.65 * relevance[i]);
       ctx.globalAlpha = alpha * fade;
-      ctx.fillStyle = "#f1f5f9";
+      ctx.strokeText(name, rect.x, rect.y + rect.h / 2);
       ctx.fillText(name, rect.x, rect.y + rect.h / 2);
     }
-    ctx.shadowColor = "transparent";
   };
 
   const render = (fade: number) => {

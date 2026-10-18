@@ -125,7 +125,7 @@ export default function Home() {
             <h2 id="form-title">どんな一杯をお探しですか？</h2>
           </div>
           <span className="step-label">
-            <span>01</span> / 02
+            <span>01</span> / 03
           </span>
         </div>
 

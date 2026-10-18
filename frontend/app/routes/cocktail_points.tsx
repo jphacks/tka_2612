@@ -6,8 +6,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
-import { BASE_GROUPS, baseLabel } from "../cocktails/bases";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
+import { BASE_GROUPS } from "../cocktails/bases";
 import { CocktailCloud, type FocusRequest } from "../cocktails/CocktailCloud";
 import type { Layout } from "../cocktails/cloudScene";
 import {
@@ -16,6 +16,8 @@ import {
   searchNearby,
 } from "../cocktails/cocktailData";
 import { createUmapClient, type UmapClient } from "../cocktails/umapClient";
+import { SiteHeader } from "../components/site-chrome";
+import { baseTags, englishName } from "../lib/cocktail-display";
 import {
   clearMenuScan,
   getMenuScanState,
@@ -26,7 +28,7 @@ import type { Route } from "./+types/cocktail_points";
 
 export function meta(_: Route.MetaArgs) {
   return [
-    { title: "カクテル探索" },
+    { title: "カクテルの地図 — SIP" },
     {
       name: "description",
       content: "好みの味やお酒の名前から、カクテルを地図のように探せます",
@@ -63,6 +65,7 @@ function errorMessage(error: unknown): string {
 export default function CocktailPoints() {
   // ホームから来たときは ?q= に入力文が入っている
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const initialQueryRef = useRef(searchParams.get("q")?.trim() ?? "");
   const [query, setQuery] = useState(initialQueryRef.current);
   const [points, setPoints] = useState<CocktailPoint[]>([]);
@@ -227,91 +230,88 @@ export default function CocktailPoints() {
     selectedId === null ? null : (pointsById.get(selectedId) ?? null);
 
   return (
-    <main className="relative h-dvh overflow-hidden bg-slate-950 text-slate-100">
-      <CocktailCloud
-        layout={layout}
-        selectedId={selectedId}
-        bestMatchId={bestMatchId}
-        focus={focus}
-        onSelect={handleSelect}
-      />
+    <main className="site-shell points-page">
+      <SiteHeader>
+        <Link className="topbar-link" to="/">
+          ホームへ戻る <span aria-hidden="true">↗</span>
+        </Link>
+      </SiteHeader>
 
-      <header className="pointer-events-none absolute inset-x-4 top-4">
-        <h1 className="text-sm font-semibold">カクテル探索</h1>
-        <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-400">
-          {BASE_GROUPS.map((b) => (
-            <li key={b.name} className="flex items-center gap-1">
-              <span
-                className="size-1.5 rounded-full"
-                style={{ backgroundColor: b.color }}
-              />
-              {b.name}
-            </li>
-          ))}
-        </ul>
-      </header>
-
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 px-4 pb-6">
-        <div className="pointer-events-auto mx-auto flex max-w-xl flex-col gap-3">
-          <MenuScanBanner />
-          {selected && (
-            <DetailCard
-              cocktail={selected}
-              score={scores?.get(selected.id) ?? null}
-              onClose={() => setSelectedId(null)}
-            />
-          )}
-          {status && (
-            <p
-              className="text-center text-sm text-slate-400"
-              aria-live="polite"
-            >
-              {status}
+      <section className="points-section" aria-labelledby="points-title">
+        <div className="points-heading">
+          <div>
+            <p className="eyebrow section-eyebrow">EXPLORE THE MAP</p>
+            <h1 id="points-title">カクテルの地図</h1>
+            <p className="points-description">
+              似ているお酒ほど近くに並んでいます。点を選ぶと詳しく見られます。
             </p>
-          )}
-          <form
-            onSubmit={handleSubmit}
-            className="flex items-center gap-1 rounded-full border border-white/10 bg-slate-900/80 py-1.5 pl-5 pr-1.5 shadow-lg backdrop-blur focus-within:border-sky-400/60"
-          >
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="好きな味や気分で探す（例: 甘くてフルーティ）"
-              aria-label="カクテルを検索"
-              className="min-w-0 flex-1 bg-transparent py-1.5 text-base placeholder:text-slate-500 focus:outline-none"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={handleClear}
-                aria-label="検索をクリア"
-                className="grid size-9 place-items-center rounded-full text-slate-400 hover:bg-white/10 hover:text-slate-100"
-              >
-                ×
-              </button>
-            )}
-            <button
-              type="submit"
-              aria-label="探す"
-              disabled={points.length === 0}
-              className="grid size-9 place-items-center rounded-full bg-sky-500 text-slate-950 hover:bg-sky-400 disabled:opacity-40"
-            >
-              <svg
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="size-4"
-                aria-hidden="true"
-              >
-                <circle cx="8.5" cy="8.5" r="5.5" />
-                <path d="m13 13 4 4" strokeLinecap="round" />
-              </svg>
-            </button>
-          </form>
+          </div>
+          <ul className="points-legend" aria-label="点の色とベースのお酒">
+            {BASE_GROUPS.map((b) => (
+              <li key={b.name}>
+                <span style={{ backgroundColor: b.color }} />
+                {b.name}
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
+
+        <div className="points-map">
+          <CocktailCloud
+            layout={layout}
+            selectedId={selectedId}
+            bestMatchId={bestMatchId}
+            focus={focus}
+            onSelect={handleSelect}
+          />
+
+          <div className="points-panel">
+            <MenuScanBanner />
+            {selected && (
+              <DetailCard
+                cocktail={selected}
+                score={scores?.get(selected.id) ?? null}
+                backTo={`${location.pathname}${location.search}`}
+                onClose={() => setSelectedId(null)}
+              />
+            )}
+          </div>
+
+          <div className="points-overlay">
+            {status && (
+              <p className="points-status" aria-live="polite">
+                {status}
+              </p>
+            )}
+            <form className="points-search" onSubmit={handleSubmit}>
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="味や気分で探す（例: 甘くてフルーティ）"
+                aria-label="カクテルを検索"
+              />
+              {query && (
+                <button
+                  type="button"
+                  className="points-search-clear"
+                  onClick={handleClear}
+                  aria-label="検索をクリア"
+                >
+                  ×
+                </button>
+              )}
+              <button
+                type="submit"
+                className="points-search-submit"
+                disabled={points.length === 0}
+              >
+                探す
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
@@ -327,48 +327,40 @@ function MenuScanBanner() {
   if (scan.status === "idle") return null;
 
   return (
-    <section
-      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900/85 px-4 py-3 text-sm shadow-lg backdrop-blur"
-      aria-live="polite"
-    >
+    <section className="points-banner" aria-live="polite">
       {scan.status === "scanning" && (
         <>
-          <span
-            className="size-4 shrink-0 animate-spin rounded-full border-2 border-sky-400 border-t-transparent"
-            aria-hidden="true"
-          />
-          <p className="flex-1 text-slate-300">
+          <span className="points-spinner" aria-hidden="true" />
+          <p>
             メニューを読み取っています。終わるまで地図を眺めてお待ちください
           </p>
         </>
       )}
       {scan.status === "done" && (
         <>
-          <p className="flex-1 text-slate-100">
-            メニューの読み取りが終わりました
-          </p>
+          <p>メニューの読み取りが終わりました</p>
           <button
             type="button"
+            className="points-banner-action"
             onClick={() => {
               clearMenuScan();
               navigate("/cocktails");
             }}
-            className="shrink-0 rounded-full bg-sky-500 px-4 py-1.5 font-semibold text-slate-950 hover:bg-sky-400"
           >
-            おすすめを見る
+            おすすめを見る <span aria-hidden="true">→</span>
           </button>
         </>
       )}
       {scan.status === "failed" && (
         <>
-          <p className="flex-1 text-rose-300" role="alert">
+          <p className="field-error" role="alert">
             {scan.message}
           </p>
           <button
             type="button"
+            className="points-close"
             onClick={clearMenuScan}
             aria-label="閉じる"
-            className="grid size-8 shrink-0 place-items-center rounded-full text-slate-400 hover:bg-white/10 hover:text-slate-100"
           >
             ×
           </button>
@@ -380,54 +372,56 @@ function MenuScanBanner() {
 
 type DetailCardProps = {
   cocktail: CocktailPoint;
-  // 入力文との一致度（コサイン類似度）。検索していないときは null
+  // 入力文との相性（コサイン類似度）。検索していないときは null
   score: number | null;
+  // 詳細ページの「戻る」で戻ってくる先（今の地図の URL）
+  backTo: string;
   onClose: () => void;
 };
 
-function DetailCard({ cocktail, score, onClose }: DetailCardProps) {
-  const baseColor = BASE_GROUPS.find(
-    (g) => g.name === cocktail.baseGroup,
-  )?.color;
+function DetailCard({ cocktail, score, backTo, onClose }: DetailCardProps) {
+  const english = englishName(cocktail);
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-slate-900/85 p-4 shadow-lg backdrop-blur">
-      <div className="flex items-start justify-between gap-3">
+    <section className="points-card" aria-label={cocktail.name}>
+      <div className="points-card-head">
         <div>
-          <h2 className="font-semibold leading-snug">{cocktail.name}</h2>
-          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-400">
-            <span
-              className="size-1.5 rounded-full"
-              style={{ backgroundColor: baseColor }}
-            />
-            {baseLabel(cocktail.bases)}
-            {score !== null && (
-              <span className="ml-1 text-sky-300">
-                一致度 {Math.round(score * 100)}%
-              </span>
-            )}
-          </p>
+          {english && <p className="cocktail-english">{english}</p>}
+          <h2>{cocktail.name}</h2>
+          <div className="cocktail-tags">
+            {baseTags(cocktail).map((tag) => (
+              <span key={tag}>{tag}</span>
+            ))}
+          </div>
         </div>
+        {score !== null && (
+          <div className="match-score">
+            <strong>
+              {Math.round(score * 100)}
+              <small>%</small>
+            </strong>
+            <span>相性</span>
+          </div>
+        )}
         <button
           type="button"
+          className="points-close"
           onClick={onClose}
           aria-label="閉じる"
-          className="-mr-1.5 -mt-1.5 grid size-8 shrink-0 place-items-center rounded-full text-slate-400 hover:bg-white/10 hover:text-slate-100"
         >
           ×
         </button>
       </div>
-      <p className="mt-2 text-sm leading-relaxed text-slate-300">
-        {cocktail.description}
-      </p>
-      <p className="mt-2 text-xs text-slate-400">
+      <p className="points-card-description">{cocktail.description}</p>
+      <p className="points-card-ingredients">
         材料: {cocktail.ingredients.join("・")}
       </p>
       <Link
+        className="text-link"
         to={`/cocktails/${cocktail.id}`}
-        className="mt-3 inline-block text-sm text-sky-300 hover:text-sky-200"
+        state={{ backTo, score }}
       >
-        詳しく見る →
+        詳しく見る ↗
       </Link>
     </section>
   );
