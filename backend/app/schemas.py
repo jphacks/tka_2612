@@ -165,3 +165,15 @@ class MenuScanResponse(BaseModel):
     items: list[MenuScanItem] = Field(
         description="メニューに載っているお酒（載っている順、同じ名前は1件）"
     )
+
+
+class KeywordCount(BaseModel):
+    """検索履歴でよく使われた言葉（ワードクラウド・ランキング用）"""
+
+    word: str = Field(
+        description="言葉（形容詞などは基本形にそろえてある。例: 甘く → 甘い）"
+    )
+    count: int = Field(description="この言葉を含む検索の回数")
+    weight: float = Field(
+        description="表示の大きさの目安（いちばん多い言葉を 1 とした割合、0〜1）"
+    )

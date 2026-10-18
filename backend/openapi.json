@@ -530,6 +530,78 @@
         }
       }
     },
+    "/store/keywords": {
+      "get": {
+        "tags": [
+          "store"
+        ],
+        "summary": "List Popular Keywords",
+        "description": "検索履歴でよく使われた言葉を、回数の多い順に返す（ワードクラウド・ランキング用）\n\nおすすめで入力された文を単語に分け、意味のある言葉（名詞・形容詞・副詞・動詞）だけを数える。\n「お酒」「飲む」のように好みの手がかりにならない言葉は除く。\n`count` はその言葉を含む検索の回数、`weight` はいちばん多い言葉を 1 とした割合。",
+        "operationId": "list_popular_keywords",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "description": "返す言葉の数（最大200）",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "返す言葉の数（最大200）"
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 365,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "直近何日分を数えるか。省略するとすべての期間",
+              "title": "Days"
+            },
+            "description": "直近何日分を数えるか。省略するとすべての期間"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/KeywordCount"
+                  },
+                  "title": "Response List Popular Keywords"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -729,6 +801,33 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "KeywordCount": {
+        "properties": {
+          "word": {
+            "type": "string",
+            "title": "Word",
+            "description": "言葉（形容詞などは基本形にそろえてある。例: 甘く → 甘い）"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "description": "この言葉を含む検索の回数"
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight",
+            "description": "表示の大きさの目安（いちばん多い言葉を 1 とした割合、0〜1）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "word",
+          "count",
+          "weight"
+        ],
+        "title": "KeywordCount",
+        "description": "検索履歴でよく使われた言葉（ワードクラウド・ランキング用）"
       },
       "MatchedCocktail": {
         "properties": {
