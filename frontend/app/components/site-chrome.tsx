@@ -6,7 +6,6 @@ export function SiteHeader({ children }: { children?: ReactNode }) {
   return (
     <header className="topbar">
       <Link className="brand" to="/" aria-label="カクテルタスケル ホーム">
-        <span className="brand-mark" aria-hidden="true" />
         カクテルタスケル
       </Link>
       {children}
