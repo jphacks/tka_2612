@@ -6,7 +6,7 @@
 
 import unicodedata
 from collections import Counter
-from functools import cache
+from functools import cache, lru_cache
 
 from janome.tokenizer import Token, Tokenizer
 
@@ -69,8 +69,18 @@ def _is_meaningful(word: str) -> bool:
     return len(word) >= 2 or unicodedata.name(word, "").startswith("CJK UNIFIED")
 
 
+# 単語に分けた結果を覚えておく件数。集計のたびに過去の入力文をすべて分け直さないようにする
+EXTRACT_CACHE_SIZE = 4096
+
+
 def extract_words(text: str) -> list[str]:
     """入力文から意味のある言葉を、出てきた順に返す（同じ言葉は1回だけ）"""
+    return list(_extract_words_cached(text))
+
+
+@lru_cache(maxsize=EXTRACT_CACHE_SIZE)
+def _extract_words_cached(text: str) -> tuple[str, ...]:
+    # 覚えた結果が書き換えられないよう、tuple で持つ
     normalized = unicodedata.normalize("NFKC", text).lower()
     words: list[str] = []
     for token in _tokenizer().tokenize(normalized):
@@ -91,7 +101,7 @@ def extract_words(text: str) -> list[str]:
             continue
         if _is_meaningful(word) and word not in words:
             words.append(word)
-    return words
+    return tuple(words)
 
 
 def ranking(limit: int, days: int | None = None) -> list[tuple[str, int]]:

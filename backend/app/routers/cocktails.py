@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from app import similarity
+from app import gemini, similarity
 from app.cocktail_db import COCKTAILS, COCKTAILS_BY_ID, VECTORS
 from app.schemas import (
     Cocktail,
@@ -41,12 +41,7 @@ def get_cocktail(cocktail_id: str) -> Cocktail:
     return cocktail
 
 
-@router.post(
-    "/search",
-    responses={
-        503: {"description": "Gemini が使えない（API キー未設定・回数制限など）"}
-    },
-)
+@router.post("/search", responses=gemini.UNAVAILABLE_RESPONSE)
 def search_cocktails(req: SearchRequest) -> SearchResponse:
     """入力文をベクトル化し、ベクトルが近い順（一致度の高い順）にお酒を100件返す
 

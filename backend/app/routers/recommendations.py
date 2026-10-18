@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from app import query_log, similarity
+from app import gemini, query_log, similarity
 from app.cocktail_db import COCKTAILS, COCKTAILS_BY_ID
 from app.schemas import Recommendation, RecommendRequest, RecommendResponse
 
@@ -13,7 +13,7 @@ TOP_N = 5
     "",
     responses={
         422: {"description": "存在しないお酒のIDが含まれている"},
-        503: {"description": "Gemini が使えない（API キー未設定・回数制限など）"},
+        **gemini.UNAVAILABLE_RESPONSE,
     },
 )
 def recommend(req: RecommendRequest) -> RecommendResponse:

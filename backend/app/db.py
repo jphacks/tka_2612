@@ -34,6 +34,11 @@ CREATE INDEX IF NOT EXISTS queries_created_at ON queries (created_at);
 """
 
 
+# テーブルを作り終えたファイル。つなぐたびに CREATE TABLE を流さないよう、ファイルごとに1回だけ作る
+# （テストでは DATABASE_PATH が一時ファイルに切り替わるので、パスごとに覚えておく）
+_initialized: set[Path] = set()
+
+
 def database_path() -> Path:
     return Path(os.environ.get("DATABASE_PATH", DEFAULT_PATH))
 
@@ -43,5 +48,7 @@ def connect() -> sqlite3.Connection:
     path = database_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
-    conn.executescript(SCHEMA)
+    if path not in _initialized:
+        conn.executescript(SCHEMA)
+        _initialized.add(path)
     return conn

@@ -3,7 +3,10 @@
 API キーは環境変数 GEMINI_API_KEY から読む（backend/.env に書き、make dev で読み込まれる）。
 """
 
+import logging
 import os
+from collections.abc import Generator
+from contextlib import contextmanager
 from functools import cache
 
 from google import genai
@@ -26,9 +29,44 @@ RETRY = types.HttpRetryOptions(
 )
 
 
+logger = logging.getLogger(__name__)
+
+UNAVAILABLE_DETAIL = "この機能は現在使えません"
+BUSY_DETAIL = "ただいま混み合っています。少し待ってからもう一度お試しください"
+
+# Gemini を使うエンドポイントの OpenAPI に載せる 503 の説明
+UNAVAILABLE_RESPONSE: dict[int | str, dict[str, object]] = {
+    503: {"description": "Gemini が使えない（API キー未設定・回数制限など）"}
+}
+
+
+class GeminiUnavailableError(Exception):
+    """Gemini を呼べない・呼び出しに失敗した。main.py で 503 の応答に変える"""
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
 def is_available() -> bool:
     """API キーが設定されていて、Gemini を呼べるか"""
     return bool(os.environ.get("GEMINI_API_KEY"))
+
+
+def require_available(detail: str = UNAVAILABLE_DETAIL) -> None:
+    """API キーが設定されていなければ、GeminiUnavailableError を投げる"""
+    if not is_available():
+        raise GeminiUnavailableError(detail)
+
+
+@contextmanager
+def report_failure(action: str) -> Generator[None]:
+    """Gemini の呼び出しに失敗したら、ログに残して GeminiUnavailableError にする"""
+    try:
+        yield
+    except GeminiError as e:
+        logger.warning("%sに失敗しました: %s", action, e)
+        raise GeminiUnavailableError(BUSY_DETAIL) from e
 
 
 @cache

@@ -1,9 +1,11 @@
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
+from app import gemini
 from app.routers import cocktails, favorites, menu, recommendations, store
 
 
@@ -12,7 +14,9 @@ def generate_unique_id(route: APIRoute) -> str:
     return route.name
 
 
-app = FastAPI(title="tka_2612 API", generate_unique_id_function=generate_unique_id)
+app = FastAPI(
+    title="カクテルタスケル API", generate_unique_id_function=generate_unique_id
+)
 
 # ブラウザのフロントエンド（別オリジン）から API を呼べるようにする。
 # 許可するオリジンは環境変数 CORS_ORIGINS にカンマ区切りで書く（既定はフロントエンドの開発サーバー）
@@ -22,6 +26,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(gemini.GeminiUnavailableError)
+async def gemini_unavailable(
+    _: Request, exc: gemini.GeminiUnavailableError
+) -> JSONResponse:
+    """Gemini を呼べないときは、どのエンドポイントでも 503 を返す"""
+    return JSONResponse(status_code=503, content={"detail": exc.detail})
+
 
 app.include_router(cocktails.router)
 app.include_router(menu.router)

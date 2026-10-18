@@ -4,48 +4,44 @@
 ベクトル付きのファイルがなければ元データだけを読み、ベクトルなしで動く。
 """
 
+from pathlib import Path
+
 from app.data_files import (
     BASES_EMBEDDED_PATH,
     BASES_SOURCE_PATH,
     EMBEDDED_PATH,
     SOURCE_PATH,
+    BaseRecord,
+    CocktailRecord,
     read_base_records,
     read_records,
 )
 from app.schemas import BaseSpirit, Cocktail
 
 
-def _load() -> tuple[list[Cocktail], dict[str, list[float]]]:
-    path = EMBEDDED_PATH if EMBEDDED_PATH.exists() else SOURCE_PATH
-    records = read_records(path)
-    cocktails = [
-        Cocktail(
-            id=r.id,
-            name=r.name,
-            aliases=r.aliases,
-            description=r.description,
-            ingredients=r.ingredients,
-            bases=r.bases,
-        )
-        for r in records
-    ]
-    vectors = {r.id: r.vector for r in records if r.vector is not None}
-    return cocktails, vectors
+def _existing(embedded: Path, source: Path) -> Path:
+    """ベクトル付きのファイルがあればそれを、なければ元データを使う"""
+    return embedded if embedded.exists() else source
 
 
-def _load_bases() -> tuple[list[BaseSpirit], dict[str, list[float]]]:
-    path = BASES_EMBEDDED_PATH if BASES_EMBEDDED_PATH.exists() else BASES_SOURCE_PATH
-    records = read_base_records(path)
-    bases = [
-        BaseSpirit(id=r.id, name=r.name, aliases=r.aliases, description=r.description)
-        for r in records
-    ]
-    vectors = {r.id: r.vector for r in records if r.vector is not None}
-    return bases, vectors
+def _vectors(
+    records: list[CocktailRecord] | list[BaseRecord],
+) -> dict[str, list[float]]:
+    """ID ごとのベクトル（ベクトルのない件は含めない）"""
+    return {r.id: r.vector for r in records if r.vector is not None}
 
 
-COCKTAILS, VECTORS = _load()
+_cocktail_records = read_records(_existing(EMBEDDED_PATH, SOURCE_PATH))
+# API ではベクトルを返さないので、ベクトルを除いて持つ
+COCKTAILS = [
+    Cocktail.model_validate(r.model_dump(exclude={"vector"})) for r in _cocktail_records
+]
+VECTORS = _vectors(_cocktail_records)
 COCKTAILS_BY_ID: dict[str, Cocktail] = {c.id: c for c in COCKTAILS}
 
-BASES, BASE_VECTORS = _load_bases()
+_base_records = read_base_records(_existing(BASES_EMBEDDED_PATH, BASES_SOURCE_PATH))
+BASES = [
+    BaseSpirit.model_validate(r.model_dump(exclude={"vector"})) for r in _base_records
+]
+BASE_VECTORS = _vectors(_base_records)
 BASES_BY_ID: dict[str, BaseSpirit] = {b.id: b for b in BASES}

@@ -1,5 +1,6 @@
 import {
   addFavorite,
+  type Cocktail,
   listFavoriteCounts,
   listFavorites,
   removeFavorite,
@@ -17,13 +18,18 @@ export function getDeviceId(): string {
   return deviceId;
 }
 
-// この端末でお気に入りに登録したお酒の ID
-export async function loadFavoriteIds(): Promise<string[]> {
+// この端末でお気に入りに登録したお酒（新しく登録した順）
+export async function loadFavorites(): Promise<Cocktail[]> {
   const response = await listFavorites({ device_id: getDeviceId() });
   if (response.status !== 200) {
     throw new Error("お気に入りを読み込めませんでした。");
   }
-  return response.data.map((cocktail) => cocktail.id);
+  return response.data;
+}
+
+// この端末でお気に入りに登録したお酒の ID
+export async function loadFavoriteIds(): Promise<string[]> {
+  return (await loadFavorites()).map((cocktail) => cocktail.id);
 }
 
 // お酒のお気に入りの総数（全端末）。まだ誰も登録していなければ 0

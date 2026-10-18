@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { cx } from "~/lib/cx";
 
 // ネオン管のような線で描いたカクテルグラス。color はグラスに入ったお酒の色
 export function NeonGlass({
@@ -13,7 +14,7 @@ export function NeonGlass({
 
   return (
     <svg
-      className={`neon-glass${className ? ` ${className}` : ""}`}
+      className={cx("neon-glow overflow-visible", className)}
       viewBox="0 0 120 140"
       fill="none"
       aria-hidden="true"
@@ -29,7 +30,7 @@ export function NeonGlass({
       <path d="M22 34 H98 L60 76 Z" fill={`url(#${gradientId})`} />
       {/* グラスの縁・脚・台 */}
       <path
-        className="neon-glass-line"
+        className="stroke-current"
         d="M12 24 H108 L60 78 Z M60 78 V122 M38 124 H82"
         strokeWidth="3.5"
         strokeLinecap="round"
@@ -37,7 +38,7 @@ export function NeonGlass({
       />
       {/* 縁に飾ったオレンジ */}
       <circle
-        className="neon-glass-garnish"
+        className="stroke-sunset"
         cx="96"
         cy="22"
         r="13"

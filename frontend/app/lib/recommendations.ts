@@ -138,16 +138,27 @@ export function loadRecommendationResults(
     : null;
 }
 
+// 検索ごとに、おすすめを求める処理を1回にまとめる（開発時に React が effect を2回実行しても1回だけ）
+const fetching = new Map<string, Promise<RecommendationResults>>();
+
 // この検索の結果を返す。保存してあればそれを使い、API を呼び直さない
-// （再読み込みのたびに入力文が店舗向けの集計に数えられないようにするため）
-export async function getRecommendationResults(
+// （再読み込みや同時の呼び出しのたびに、入力文が店舗向けの集計に数えられないようにするため）
+export function getRecommendationResults(
   session: RecommendationSession,
 ): Promise<RecommendationResults> {
   const saved = loadRecommendationResults(session.id);
-  if (saved) return saved;
-  const results = await fetchRecommendations(session);
-  saveResults(results);
-  return results;
+  if (saved) return Promise.resolve(saved);
+  const inFlight = fetching.get(session.id);
+  if (inFlight) return inFlight;
+
+  const promise = fetchRecommendations(session)
+    .then((results) => {
+      saveResults(results);
+      return results;
+    })
+    .finally(() => fetching.delete(session.id));
+  fetching.set(session.id, promise);
+  return promise;
 }
 
 // 検索ごとに、位置を求める処理を1回にまとめる（一覧と詳細から同時に呼ばれても1回だけ）
