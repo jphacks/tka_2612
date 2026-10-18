@@ -104,6 +104,18 @@ class TestReadMenu(unittest.TestCase):
     def test_empty(self) -> None:
         self.assertEqual(self.read('{"drinks": []}'), [])
 
+    def test_thinking_level_minimal(self) -> None:
+        fake = mock.Mock()
+        fake.interactions.create.return_value = mock.Mock(
+            spec=Interaction, output_text='{"drinks": []}'
+        )
+        with mock.patch.object(gemini, "client", return_value=fake):
+            menu_reader.read_menu(b"png", "image/png")
+        self.assertEqual(
+            fake.interactions.create.call_args.kwargs["generation_config"],
+            {"thinking_level": "minimal"},
+        )
+
 
 class TestCors(unittest.TestCase):
     def test_frontend_origin_allowed(self) -> None:
