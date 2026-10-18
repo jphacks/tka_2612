@@ -3,8 +3,10 @@
 import unittest
 from unittest import mock
 
+import httpx
 from fastapi.testclient import TestClient
 from google.genai import errors
+from google.genai._gaos.lib.compat_errors import RateLimitError
 from google.genai.interactions import Interaction
 
 from app import gemini, menu_reader
@@ -59,6 +61,16 @@ class TestMenuScan(unittest.TestCase):
     def test_gemini_error(self) -> None:
         self.read.side_effect = errors.ClientError(
             429, {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED"}}
+        )
+        self.assertEqual(self.scan(), 503)
+
+    def test_interactions_rate_limit(self) -> None:
+        # 写真の読み取りで使う interactions API は、google.genai.errors とは別系統の例外を投げる
+        request = httpx.Request("POST", "https://example.com")
+        self.read.side_effect = RateLimitError(
+            "Rate limit exceeded",
+            response=httpx.Response(429, request=request),
+            body=None,
         )
         self.assertEqual(self.scan(), 503)
 
