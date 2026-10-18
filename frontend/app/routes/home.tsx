@@ -101,20 +101,19 @@ export default function Home() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // メニューの写真がなければ、全カクテルの中から入力文に近いものを点群で見せる
+    if (!imageFile) {
+      navigate(`/cocktail_points?q=${encodeURIComponent(preference.trim())}`);
+      return;
+    }
     setIsSubmitting(true);
     setSubmitError("");
     try {
-      let menuMatch: MenuMatch | null = null;
-      let ocrError: string | null = null;
-
-      if (imageFile) {
-        // 写真を選んだときに始めた読み取りがあれば、その結果を待つ
-        const outcome = await (scanRef.current?.file === imageFile
-          ? scanRef.current.promise
-          : startScan(imageFile));
-        menuMatch = outcome.menuMatch;
-        ocrError = outcome.error;
-      }
+      // 写真を選んだときに始めた読み取りがあれば、その結果を待つ
+      const { menuMatch, error: ocrError } = await (scanRef.current?.file ===
+      imageFile
+        ? scanRef.current.promise
+        : startScan(imageFile));
 
       await saveRecommendationSession(
         preference.trim(),
@@ -356,7 +355,9 @@ export default function Home() {
               →
             </span>
           </button>
-          <p className="demo-note">写真がなくてもカタログ全体から探せます</p>
+          <p className="demo-note">
+            写真がなければ、全カクテルの地図から近いものを探せます
+          </p>
           {submitError && (
             <p className="field-error request-error" role="alert">
               {submitError}
