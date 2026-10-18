@@ -16,6 +16,26 @@ export function meta(_: Route.MetaArgs) {
   ];
 }
 
+// 入力欄の下に出す候補。押すと入力欄に入る。
+// 味・雰囲気・変わり種を交互に並べ、スマホで見える先頭の数個でも幅が伝わるようにする
+const SUGGESTIONS = [
+  "甘くて飲みやすい",
+  "雨上がりに合う一杯",
+  "スパイ映画の主人公気分",
+  "さっぱり柑橘系",
+  "ゆっくり飲みたい夜に",
+  "魔女の怪しい薬みたいな",
+  "ほろ苦い大人の味",
+  "乾杯の一杯目に",
+  "月曜日をなかったことにしたい",
+  "度数低めで軽く",
+  "夏の夕暮れに",
+  "南の島に逃げたい",
+  "フルーティーで華やか",
+  "お祝いの日に",
+  "昭和の喫茶店みたいな味",
+];
+
 export default function Home() {
   const navigate = useNavigate();
   const [preference, setPreference] = useState("");
@@ -91,18 +111,16 @@ export default function Home() {
           />
           <div className="ask-bar">
             <div className="ask-chips">
-              {["甘くて飲みやすい", "さっぱり柑橘系", "雨上がりに合う一杯"].map(
-                (suggestion) => (
-                  <button
-                    className="chip"
-                    key={suggestion}
-                    onClick={() => setPreference(suggestion)}
-                    type="button"
-                  >
-                    {suggestion}
-                  </button>
-                ),
-              )}
+              {SUGGESTIONS.map((suggestion) => (
+                <button
+                  className="chip"
+                  key={suggestion}
+                  onClick={() => setPreference(suggestion)}
+                  type="button"
+                >
+                  {suggestion}
+                </button>
+              ))}
             </div>
             <button className="ask-submit" type="submit">
               探す <span aria-hidden="true">→</span>
