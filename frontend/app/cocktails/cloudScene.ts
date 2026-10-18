@@ -23,12 +23,15 @@ const FLIGHT_MS = 900;
 const FADE_IN_MS = 400;
 const PICK_RADIUS_PX = 12;
 const CLICK_MOVE_TOLERANCE_PX = 6;
-// 下部の UI と重ならないよう、表示の中心を画面の高さに対してこの割合だけ上にずらす
+// 下部の UI と重ならないよう、表示の中心を画面の高さに対してこの割合だけ上にずらす。
+// 縦長の画面（スマホ）は地図が低く、下部の UI の割合が大きいので、より上にずらす
 const VIEW_SHIFT_UP = 0.12;
+const PORTRAIT_VIEW_SHIFT_UP = 0.2;
 // 全体表示で点群を収める、画面の高さに対する割合
 const FIT_HEIGHT = 0.7;
 // 下部の UI に隠れずに見える範囲（画面の高さに対する割合）
 const VISIBLE_BOTTOM = 0.6;
+const PORTRAIT_VISIBLE_BOTTOM = 0.45;
 // 色は app.css の SIP の配色（--ink・--rust・--paper）に合わせる。
 // 検索で最も一致した点は、ベース酒の色と紛れないよう文字色（濃い茶）で塗る
 const BEST_MATCH_COLOR = "#332a27";
@@ -108,7 +111,9 @@ export function createCloudScene(
   const indexOf = (id: string | null) =>
     id === null ? -1 : (indexById.get(id) ?? -1);
   const scale = () => fitScale * view.zoom;
-  const originY = () => height * (0.5 - VIEW_SHIFT_UP);
+  const isPortrait = () => height > width;
+  const originY = () =>
+    height * (0.5 - (isPortrait() ? PORTRAIT_VIEW_SHIFT_UP : VIEW_SHIFT_UP));
   const screenX = (i: number) => (xs[i] - view.x) * scale() + width / 2;
   const screenY = (i: number) => (ys[i] - view.y) * scale() + originY();
   const isOnScreen = (sx: number, sy: number, margin: number) =>
@@ -435,7 +440,8 @@ export function createCloudScene(
           sx >= margin &&
           sx <= width - margin &&
           sy >= margin &&
-          sy <= height * VISIBLE_BOTTOM;
+          sy <=
+            height * (isPortrait() ? PORTRAIT_VISIBLE_BOTTOM : VISIBLE_BOTTOM);
         if (visible) return;
       }
       flight = {

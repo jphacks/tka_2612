@@ -265,8 +265,8 @@ export default function CocktailPoints() {
             onSelect={handleSelect}
           />
 
+          <MenuScanBanner />
           <div className="points-panel">
-            <MenuScanBanner />
             {selected && (
               <DetailCard
                 cocktail={selected}
