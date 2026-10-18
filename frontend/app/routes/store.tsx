@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import {
   type FavoriteCount,
   type KeywordCount,
@@ -107,6 +108,9 @@ export default function Store() {
           カクテルタスケル <span>for Bar</span>
         </p>
         <h1>トレンドレポート</h1>
+        <Link className="biz-back" to="/">
+          ← お客さま向けの画面へ
+        </Link>
       </header>
 
       <main className="biz-main">
