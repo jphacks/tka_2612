@@ -6,24 +6,34 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
-import { BASE_GROUPS } from "../cocktails/bases";
-import { CocktailCloud, type FocusRequest } from "../cocktails/CocktailCloud";
-import type { Layout } from "../cocktails/cloudScene";
+import { useLocation, useNavigate, useSearchParams } from "react-router";
+import { BASE_GROUPS } from "~/cocktails/bases";
+import { CocktailCloud, type FocusRequest } from "~/cocktails/CocktailCloud";
+import type { Layout } from "~/cocktails/cloudScene";
 import {
   type CocktailPoint,
   fetchCocktailPoints,
   searchNearby,
-} from "../cocktails/cocktailData";
-import { createUmapClient, type UmapClient } from "../cocktails/umapClient";
-import { SiteHeader } from "../components/site-chrome";
-import { baseTags, englishName } from "../lib/cocktail-display";
+} from "~/cocktails/cocktailData";
+import { createUmapClient, type UmapClient } from "~/cocktails/umapClient";
+import { BackLink, SiteHeader, SiteShell } from "~/components/site-chrome";
+import {
+  CloseButton,
+  EnglishName,
+  ErrorText,
+  GlowButton,
+  Score,
+  Tags,
+  TextLink,
+} from "~/components/ui";
+import { baseTags, englishName } from "~/lib/cocktail-display";
+import { cx } from "~/lib/cx";
 import {
   clearMenuScan,
   getMenuScanState,
   getServerMenuScanState,
   subscribeMenuScan,
-} from "../lib/menu-scan-task";
+} from "~/lib/menu-scan-task";
 import type { Route } from "./+types/cocktail_points";
 
 export function meta(_: Route.MetaArgs) {
@@ -230,82 +240,107 @@ export default function CocktailPoints() {
     selectedId === null ? null : (pointsById.get(selectedId) ?? null);
 
   return (
-    <main className="site-shell map-page">
+    <SiteShell className="flex h-dvh flex-col">
       <SiteHeader>
-        <Link className="topbar-link" to="/">
-          ← ホーム
-        </Link>
+        <BackLink to="/" label="ホーム" />
       </SiteHeader>
       <h1 className="sr-only">カクテルの地図</h1>
 
-      <ul className="map-legend" aria-label="点の色とベースのお酒">
+      <ul
+        className="mx-auto mb-3 flex w-full max-w-290 flex-wrap gap-x-4 gap-y-1.5 px-5 text-muted text-xs max-md:mb-2.5 max-md:flex-nowrap max-md:overflow-x-auto max-md:pb-1 max-md:whitespace-nowrap max-md:[scrollbar-width:none]"
+        aria-label="点の色とベースのお酒"
+      >
         {BASE_GROUPS.map((b) => (
-          <li key={b.name}>
-            <span style={{ backgroundColor: b.color, color: b.color }} />
+          <li className="flex shrink-0 items-center gap-1.5" key={b.name}>
+            <span
+              className="size-1.75 rounded-full shadow-[0_0_6px_currentColor]"
+              style={{ backgroundColor: b.color, color: b.color }}
+            />
             {b.name}
           </li>
         ))}
       </ul>
 
-      <div className="map">
-        <CocktailCloud
-          layout={layout}
-          selectedId={selectedId}
-          bestMatchId={bestMatchId}
-          focus={focus}
-          onSelect={handleSelect}
-        />
+      {/* 地図は画面の高さいっぱいに広げる（スマホでは画面の端まで） */}
+      <div className="mx-auto min-h-0 w-full max-w-290 flex-1 px-5 pb-5 max-md:p-0">
+        <div className="relative size-full overflow-hidden rounded-3xl border border-line bg-black/22 bg-radial-[70%_60%_at_50%_40%] from-violet/10 to-transparent max-md:rounded-none max-md:border-x-0 max-md:border-b-0">
+          <CocktailCloud
+            layout={layout}
+            selectedId={selectedId}
+            bestMatchId={bestMatchId}
+            focus={focus}
+            onSelect={handleSelect}
+          />
 
-        <MenuScanBanner />
-        <div className="map-panel">
-          {selected && (
-            <DetailCard
-              cocktail={selected}
-              score={scores?.get(selected.id) ?? null}
-              backTo={`${location.pathname}${location.search}`}
-              onClose={() => setSelectedId(null)}
-            />
-          )}
-        </div>
-
-        <div className="map-bottom">
-          {status && (
-            <p className="map-status" aria-live="polite">
-              {status}
-            </p>
-          )}
-          <form className="map-search" onSubmit={handleSubmit}>
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="味や気分で探す"
-              aria-label="カクテルを検索"
-            />
-            {query && (
-              <button
-                type="button"
-                className="map-search-clear"
-                onClick={handleClear}
-                aria-label="検索をクリア"
-              >
-                ×
-              </button>
+          {/* 読み取りの状況と選んだお酒のカード。地図の中央（選んだ点）を隠さないよう、
+              広い画面では右上に縦に並べ、スマホでは読み取りの状況を上端、カードを検索欄の上に出す */}
+          <div className="pointer-events-none absolute top-4 right-4 bottom-28 flex w-90 max-w-[calc(100%-2rem)] flex-col gap-3 max-md:inset-x-3 max-md:top-3 max-md:w-auto max-md:max-w-none">
+            <MenuScanBanner />
+            {selected && (
+              <DetailCard
+                cocktail={selected}
+                score={scores?.get(selected.id) ?? null}
+                backTo={`${location.pathname}${location.search}`}
+                onClose={() => setSelectedId(null)}
+              />
             )}
-            <button
-              type="submit"
-              className="map-search-submit"
-              disabled={points.length === 0}
-              aria-label="探す"
+          </div>
+
+          {/* 地図の下側に重ねる、検索の状況と検索欄 */}
+          <div className="pointer-events-none absolute inset-x-4 bottom-4 mx-auto flex max-w-140 flex-col gap-2.5 max-md:inset-x-3 max-md:bottom-3">
+            {status && (
+              <p
+                className="text-center text-muted text-sm text-shadow-halo text-shadow-night"
+                aria-live="polite"
+              >
+                {status}
+              </p>
+            )}
+            <form
+              className={cx(
+                FLOATING,
+                "pointer-events-auto flex items-center gap-1 rounded-full py-1.5 pr-1.5 pl-4.5 transition-colors focus-within:border-neon/50",
+              )}
+              onSubmit={handleSubmit}
             >
-              →
-            </button>
-          </form>
+              {/* iPhone は文字が 16px 未満の入力欄を選ぶと画面を拡大するため、16px にする */}
+              <input
+                className="min-w-0 flex-1 bg-transparent py-2 text-base text-ink outline-none placeholder:text-faint"
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="味や気分で探す"
+                aria-label="カクテルを検索"
+              />
+              {query && (
+                <CloseButton onClick={handleClear} label="検索をクリア" />
+              )}
+              <button
+                type="submit"
+                className="grid size-11 place-items-center rounded-full bg-linear-120 from-sunset to-neon font-bold text-lg text-on-glow shadow-glow disabled:cursor-wait disabled:opacity-50"
+                disabled={points.length === 0}
+                aria-label="探す"
+              >
+                →
+              </button>
+            </form>
+          </div>
         </div>
       </div>
-    </main>
+    </SiteShell>
   );
 }
+
+// 地図の上に浮かせるパネルの見た目
+const FLOATING =
+  "border border-line bg-night-2/82 shadow-float backdrop-blur-lg";
+
+// 読み取りの状態ごとのバナーの縁。読み取り中は縁に光を回し、終わったらネオンで光らせる
+const BANNER_TONE = {
+  scanning: "scan-border",
+  done: "border border-neon/55 bg-night-2/82 shadow-halo shadow-neon/35",
+  failed: "border border-line bg-night-2/82 shadow-float",
+} as const;
 
 // ホームで始めたメニューの読み取りの状況。終わったら、メニューから選んだおすすめへ進める
 function MenuScanBanner() {
@@ -319,50 +354,61 @@ function MenuScanBanner() {
 
   return (
     <section
-      className={`map-banner is-${scan.status}`}
+      className={cx(
+        "pointer-events-auto flex shrink-0 items-center gap-3 rounded-2xl py-2.5 pr-2.5 pl-4 text-muted text-sm backdrop-blur-lg",
+        BANNER_TONE[scan.status],
+      )}
       aria-live="polite"
       aria-busy={scan.status === "scanning"}
     >
       {/* 読み取っている写真。読み取り中は光の帯が上下に走り、終わったら印を付ける */}
-      <div className="scan-thumb" aria-hidden="true">
-        <img src={scan.previewUrl} alt="" />
-        {scan.status === "scanning" && <span className="scan-beam" />}
-        {scan.status === "done" && <span className="scan-check">✓</span>}
+      <div
+        className="relative size-13 shrink-0 overflow-hidden rounded-xl bg-glass"
+        aria-hidden="true"
+      >
+        <img
+          className="size-full object-cover brightness-70"
+          src={scan.previewUrl}
+          alt=""
+        />
+        {scan.status === "scanning" && (
+          <span className="absolute inset-x-0 top-0 h-1/3 animate-scan-beam bg-linear-to-b from-transparent via-neon/75 to-transparent shadow-halo" />
+        )}
+        {scan.status === "done" && (
+          <span className="absolute inset-0 grid animate-pop place-items-center bg-neon/35 font-extrabold text-2xl text-white text-shadow-halo text-shadow-neon">
+            ✓
+          </span>
+        )}
       </div>
       {scan.status === "scanning" && (
-        <div className="scan-progress">
-          <p>メニューを読み取り中</p>
-          <span className="scan-bar" />
+        <div className="grid min-w-0 flex-1 gap-2.5">
+          <p className="font-bold text-base text-ink">メニューを読み取り中</p>
+          {/* 終わりの見えない処理なので、流れ続ける進捗バーにする */}
+          <span className="relative block h-1 overflow-hidden rounded-full bg-white/10">
+            <span className="absolute inset-y-0 left-0 w-2/5 animate-scan-bar rounded-full bg-linear-to-r from-sunset to-neon shadow-halo" />
+          </span>
         </div>
       )}
       {scan.status === "done" && (
         <>
-          <p>読み取りました</p>
-          <button
+          <p className="flex-1">読み取りました</p>
+          <GlowButton
             type="button"
-            className="pill-button"
             onClick={() => {
               clearMenuScan();
               navigate("/cocktails");
             }}
           >
             おすすめを見る →
-          </button>
+          </GlowButton>
         </>
       )}
       {scan.status === "failed" && (
         <>
-          <p className="page-error" role="alert">
+          <ErrorText className="flex-1" role="alert">
             {scan.message}
-          </p>
-          <button
-            type="button"
-            className="close-button"
-            onClick={clearMenuScan}
-            aria-label="閉じる"
-          >
-            ×
-          </button>
+          </ErrorText>
+          <CloseButton onClick={clearMenuScan} />
         </>
       )}
     </section>
@@ -378,43 +424,36 @@ type DetailCardProps = {
   onClose: () => void;
 };
 
+// 選んだお酒のカード。長い説明で選んだ点が隠れないよう、スマホでは説明を短くする（全文は詳細ページで読める）
 function DetailCard({ cocktail, score, backTo, onClose }: DetailCardProps) {
   return (
-    <section className="map-card" aria-label={cocktail.name}>
-      <div className="map-card-head">
-        <div>
-          <h2>{cocktail.name}</h2>
-          <p className="drink-en">{englishName(cocktail)}</p>
+    <section
+      className={cx(
+        FLOATING,
+        "pointer-events-auto min-h-0 animate-reveal overflow-y-auto rounded-2xl px-4.5 py-4 max-md:mt-auto max-md:max-h-[55%]",
+      )}
+      aria-label={cocktail.name}
+    >
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-bold text-lg">{cocktail.name}</h2>
+          <EnglishName>{englishName(cocktail)}</EnglishName>
         </div>
-        {score !== null && (
-          <p className="score" title="相性">
-            {Math.round(score * 100)}
-            <small>%</small>
-          </p>
-        )}
-        <button
-          type="button"
-          className="close-button"
-          onClick={onClose}
-          aria-label="閉じる"
-        >
-          ×
-        </button>
+        {score !== null && <Score value={score} />}
+        <CloseButton className="-mt-1.5 -mr-2" onClick={onClose} />
       </div>
-      <p className="map-card-text">{cocktail.description}</p>
-      <div className="map-card-foot">
-        <div className="tags">
-          {baseTags(cocktail).map((tag) => (
-            <span key={tag}>{tag}</span>
-          ))}
-        </div>
-        <Link
-          className="text-link"
+      <p className="mt-2.5 text-muted text-sm leading-relaxed max-md:line-clamp-2">
+        {cocktail.description}
+      </p>
+      <div className="mt-3.5 flex items-center justify-between gap-3">
+        <Tags items={baseTags(cocktail)} />
+        <TextLink
+          className="shrink-0"
           to={`/cocktails/${cocktail.id}`}
           state={{ backTo, score }}
         >
           詳しく →
-        </Link>
+        </TextLink>
       </div>
     </section>
   );

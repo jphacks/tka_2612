@@ -1,8 +1,19 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
-import { NeonGlass } from "~/components/neon-glass";
-import { SiteHeader } from "~/components/site-chrome";
-import { drinkColor, englishName } from "~/lib/cocktail-display";
+import { DrinkCard, DrinkList } from "~/components/drink-card";
+import {
+  BackLink,
+  Page,
+  SiteHeader,
+  SiteShell,
+} from "~/components/site-chrome";
+import {
+  ErrorText,
+  Message,
+  PageSub,
+  PageTitle,
+  Score,
+  TextLink,
+} from "~/components/ui";
 import {
   loadRecommendationSession,
   type RecommendationSession,
@@ -72,88 +83,69 @@ export default function Cocktails() {
         : "全体から";
 
   return (
-    <main className="site-shell">
+    <SiteShell>
       <SiteHeader>
-        <Link className="topbar-link" to="/">
-          ← ホーム
-        </Link>
+        <BackLink to="/" label="ホーム" />
       </SiteHeader>
 
-      <section className="page" aria-labelledby="results-title">
-        {!isLoaded && <p className="page-message">…</p>}
+      <Page aria-labelledby="results-title">
+        {!isLoaded && <Message>…</Message>}
         {loadError && (
-          <div className="page-message" role="alert">
+          <Message role="alert">
             <p>{loadError}</p>
-            <Link className="text-link" to="/">
-              ホームへ
-            </Link>
-          </div>
+            <TextLink to="/">ホームへ</TextLink>
+          </Message>
         )}
         {isLoaded && !loadError && !session && (
-          <div className="page-message">
+          <Message>
             <p>まだ何も探していません</p>
-            <Link className="text-link" to="/">
-              ホームで探す →
-            </Link>
-          </div>
+            <TextLink to="/">ホームで探す →</TextLink>
+          </Message>
         )}
         {session && result && (
           <>
-            <h1 className="page-title" id="results-title">
+            <PageTitle id="results-title">
               {session.query ? `「${session.query}」` : "メニューのお酒"}
-            </h1>
-            <p className="page-sub">
+            </PageTitle>
+            <PageSub>
               {session.menuImage && (
                 <img
-                  className="menu-thumb"
+                  className="size-9 shrink-0 rounded-lg border border-line object-cover"
                   src={session.menuImage}
                   alt="読み取ったメニューの写真"
                 />
               )}
               {sourceLabel}・{result.recommendations.length}杯
-            </p>
+            </PageSub>
             {session.ocrError && (
-              <p className="page-error">{session.ocrError}</p>
+              <ErrorText className="mt-2.5">{session.ocrError}</ErrorText>
             )}
 
             {result.recommendations.length === 0 && (
-              <div className="page-message">
+              <Message>
                 <p>メニューからお酒を見つけられませんでした</p>
-                <Link className="text-link" to="/cocktail_points">
-                  地図で探す →
-                </Link>
-              </div>
+                <TextLink to="/cocktail_points">地図で探す →</TextLink>
+              </Message>
             )}
 
-            <ol className="drink-list">
+            <DrinkList>
               {result.recommendations.map(({ cocktail, score }) => (
-                <li key={cocktail.id}>
-                  <Link className="drink-card" to={`/cocktails/${cocktail.id}`}>
-                    <NeonGlass color={drinkColor(cocktail)} />
-                    <div className="drink-body">
-                      <h2>{cocktail.name}</h2>
-                      <p className="drink-en">{englishName(cocktail)}</p>
-                      <p className="drink-desc">{cocktail.description}</p>
-                    </div>
-                    {score !== null && (
-                      <p className="score">
-                        {Math.round(score * 100)}
-                        <small>%</small>
-                      </p>
-                    )}
-                  </Link>
-                </li>
+                <DrinkCard
+                  key={cocktail.id}
+                  cocktail={cocktail}
+                  aside={score !== null && <Score value={score} />}
+                />
               ))}
-            </ol>
+            </DrinkList>
 
             {result.unregistered.length > 0 && (
-              <p className="page-note">
+              <p className="mt-6 text-faint text-sm">
                 未登録: {result.unregistered.join("、")}
               </p>
             )}
           </>
         )}
-      </section>
-    </main>
+      </Page>
+    </SiteShell>
   );
 }

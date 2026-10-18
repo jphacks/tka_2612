@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
 import { type Cocktail, listFavorites } from "~/api/generated";
-import { NeonGlass } from "~/components/neon-glass";
-import { SiteHeader } from "~/components/site-chrome";
-import { drinkColor, englishName } from "~/lib/cocktail-display";
+import { DrinkCard, DrinkList } from "~/components/drink-card";
+import {
+  BackLink,
+  Page,
+  SiteHeader,
+  SiteShell,
+} from "~/components/site-chrome";
+import { Message, PageSub, PageTitle, TextLink } from "~/components/ui";
 import { getDeviceId } from "~/lib/favorites";
 import type { Route } from "./+types/favorites";
 
@@ -39,64 +43,52 @@ export default function Favorites() {
   }, []);
 
   return (
-    <main className="site-shell">
+    <SiteShell>
       <SiteHeader>
-        <Link className="topbar-link" to="/">
-          ← ホーム
-        </Link>
+        <BackLink to="/" label="ホーム" />
       </SiteHeader>
 
-      <section className="page" aria-labelledby="favorites-title">
-        <h1 className="page-title" id="favorites-title">
-          お気に入り
-        </h1>
+      <Page aria-labelledby="favorites-title">
+        <PageTitle id="favorites-title">お気に入り</PageTitle>
 
-        {state.status === "loading" && <p className="page-message">…</p>}
+        {state.status === "loading" && <Message>…</Message>}
         {state.status === "error" && (
-          <p className="page-message" role="alert">
-            お気に入りを読み込めませんでした
-          </p>
+          <Message role="alert">お気に入りを読み込めませんでした</Message>
         )}
         {state.status === "ready" &&
           (state.cocktails.length === 0 ? (
-            <div className="page-message">
+            <Message>
               <p>まだお気に入りがありません</p>
-              <Link className="text-link" to="/cocktail_points">
-                地図で探す →
-              </Link>
-            </div>
+              <TextLink to="/cocktail_points">地図で探す →</TextLink>
+            </Message>
           ) : (
             <>
-              <p className="page-sub">{state.cocktails.length}杯</p>
-              <ol className="drink-list">
+              <PageSub>{state.cocktails.length}杯</PageSub>
+              <DrinkList>
                 {state.cocktails.map((cocktail) => (
-                  <li key={cocktail.id}>
-                    {/* 詳細ページの「戻る」で、この一覧に戻ってこられるようにする */}
-                    <Link
-                      className="drink-card"
-                      to={`/cocktails/${cocktail.id}`}
-                      state={{
-                        backTo: "/favorites",
-                        backLabel: "お気に入り",
-                        score: null,
-                      }}
-                    >
-                      <NeonGlass color={drinkColor(cocktail)} />
-                      <div className="drink-body">
-                        <h2>{cocktail.name}</h2>
-                        <p className="drink-en">{englishName(cocktail)}</p>
-                        <p className="drink-desc">{cocktail.description}</p>
-                      </div>
-                      <span className="fav-mark" aria-hidden="true">
+                  <DrinkCard
+                    key={cocktail.id}
+                    cocktail={cocktail}
+                    // 詳細ページの「戻る」で、この一覧に戻ってこられるようにする
+                    state={{
+                      backTo: "/favorites",
+                      backLabel: "お気に入り",
+                      score: null,
+                    }}
+                    aside={
+                      <span
+                        className="text-neon text-xl text-shadow-halo"
+                        aria-hidden="true"
+                      >
                         ♥
                       </span>
-                    </Link>
-                  </li>
+                    }
+                  />
                 ))}
-              </ol>
+              </DrinkList>
             </>
           ))}
-      </section>
-    </main>
+      </Page>
+    </SiteShell>
   );
 }

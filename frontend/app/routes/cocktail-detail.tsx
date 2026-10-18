@@ -1,8 +1,22 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useParams } from "react-router";
+import { useLocation, useParams } from "react-router";
 import { type Cocktail, getCocktail } from "~/api/generated";
 import { NeonGlass } from "~/components/neon-glass";
-import { SiteHeader } from "~/components/site-chrome";
+import {
+  BackLink,
+  Page,
+  SiteHeader,
+  SiteShell,
+} from "~/components/site-chrome";
+import {
+  EnglishName,
+  ErrorText,
+  Message,
+  PageTitle,
+  Score,
+  Tags,
+  TextLink,
+} from "~/components/ui";
 import { baseTags, drinkColor, englishName } from "~/lib/cocktail-display";
 import {
   loadFavoriteCount,
@@ -127,36 +141,38 @@ export default function CocktailDetail() {
       });
   }, [cocktailId, isFromPage]);
 
-  const backLink = (
-    <Link className="topbar-link" to={back.to}>
-      ← {back.label}
-    </Link>
+  const header = (
+    <SiteHeader>
+      <BackLink to={back.to} label={back.label} />
+    </SiteHeader>
   );
 
   if (loadState === "loading") {
     return (
-      <main className="site-shell">
-        <SiteHeader>{backLink}</SiteHeader>
-        <p className="page page-message">…</p>
-      </main>
+      <SiteShell>
+        {header}
+        <Page>
+          <Message>…</Message>
+        </Page>
+      </SiteShell>
     );
   }
 
   if (loadState !== "ready" || !cocktail) {
     return (
-      <main className="site-shell">
-        <SiteHeader>{backLink}</SiteHeader>
-        <section className="page page-message" role="alert">
-          <p>
-            {loadState === "not-found"
-              ? "お酒が見つかりませんでした"
-              : "読み込めませんでした"}
-          </p>
-          <Link className="text-link" to={back.to}>
-            {back.label}へ
-          </Link>
-        </section>
-      </main>
+      <SiteShell>
+        {header}
+        <Page>
+          <Message role="alert">
+            <p>
+              {loadState === "not-found"
+                ? "お酒が見つかりませんでした"
+                : "読み込めませんでした"}
+            </p>
+            <TextLink to={back.to}>{back.label}へ</TextLink>
+          </Message>
+        </Page>
+      </SiteShell>
     );
   }
 
@@ -185,59 +201,54 @@ export default function CocktailDetail() {
   }
 
   return (
-    <main className="site-shell">
-      <SiteHeader>{backLink}</SiteHeader>
+    <SiteShell>
+      {header}
 
-      <article className="page detail" aria-labelledby="cocktail-name">
-        <div className="detail-head">
-          <NeonGlass color={drinkColor(cocktail)} className="detail-glass" />
-          <div className="detail-title">
-            <p className="drink-en">{englishName(cocktail)}</p>
-            <h1 className="page-title" id="cocktail-name">
-              {cocktail.name}
-            </h1>
-            <div className="tags">
-              {baseTags(cocktail).map((tag) => (
-                <span key={tag}>{tag}</span>
-              ))}
-            </div>
+      <Page aria-labelledby="cocktail-name">
+        <div className="flex items-center gap-5 max-md:flex-wrap max-md:gap-4">
+          <NeonGlass
+            color={drinkColor(cocktail)}
+            className="h-26 w-22 shrink-0 max-md:h-19 max-md:w-16"
+          />
+          <div className="min-w-0 flex-1">
+            <EnglishName>{englishName(cocktail)}</EnglishName>
+            <PageTitle id="cocktail-name">{cocktail.name}</PageTitle>
+            <Tags className="mt-3" items={baseTags(cocktail)} />
           </div>
-          {score !== null && (
-            <p className="score score-lg" title="相性">
-              {Math.round(score * 100)}
-              <small>%</small>
-            </p>
-          )}
+          {score !== null && <Score value={score} size="lg" />}
         </div>
 
-        <p className="detail-text">{cocktail.description}</p>
+        <p className="mt-7 text-base text-muted leading-loose">
+          {cocktail.description}
+        </p>
 
-        <ul className="tags tags-ingredients" aria-label="材料">
-          {cocktail.ingredients.map((ingredient) => (
-            <li key={ingredient}>{ingredient}</li>
-          ))}
-        </ul>
+        <Tags className="mt-5" items={cocktail.ingredients} label="材料" />
 
         <button
-          className={`fav-button${isFavorite ? " is-favorite" : ""}`}
+          className="mt-7 inline-flex h-12 min-w-18 items-center justify-center gap-2 rounded-full border border-line px-5 text-base text-muted transition-colors hover:border-neon/55 hover:text-neon disabled:cursor-wait disabled:opacity-60 aria-pressed:border-neon/55 aria-pressed:text-neon"
           type="button"
           aria-pressed={isFavorite}
           aria-label={isFavorite ? "お気に入りから外す" : "お気に入りに追加"}
           disabled={!isFavoriteReady || isSaving}
           onClick={toggleFavorite}
         >
-          <span aria-hidden="true">{isFavorite ? "♥" : "♡"}</span>
+          <span className="text-xl" aria-hidden="true">
+            {isFavorite ? "♥" : "♡"}
+          </span>
           {favoriteCount ?? ""}
         </button>
         {favoriteError && (
-          <p className="page-error" role="alert">
+          <ErrorText className="mt-2.5" role="alert">
             {favoriteError}
-          </p>
+          </ErrorText>
         )}
 
+        {/* 印の位置は写真に対する % なので、写真は切り抜かず枠ごと小さくする */}
         {session?.menuImage && (
-          <figure className="detail-menu">
+          <figure className="relative mt-9 max-w-105 overflow-hidden rounded-2xl border border-line">
+            {/* 白いメニュー写真が夜の画面で浮かないよう、少し暗くする */}
             <img
+              className="block h-auto w-full brightness-80"
               src={session.menuImage}
               alt={
                 markerPosition
@@ -245,20 +256,25 @@ export default function CocktailDetail() {
                   : "読み取ったメニューの写真"
               }
             />
+            {/* このお酒が書かれていた場所を光らせる */}
             {markerPosition && (
               <span
-                className="menu-marker"
+                className="absolute size-5.5 -translate-1/2 rounded-full border-3 border-white bg-neon shadow-halo"
                 style={{
                   left: `${markerPosition.x}%`,
                   top: `${markerPosition.y}%`,
                 }}
                 aria-hidden="true"
-              />
+              >
+                <span className="absolute -inset-2 animate-ping rounded-full border-2 border-neon" />
+              </span>
             )}
           </figure>
         )}
-        {sessionError && <p className="page-error">{sessionError}</p>}
-      </article>
-    </main>
+        {sessionError && (
+          <ErrorText className="mt-2.5">{sessionError}</ErrorText>
+        )}
+      </Page>
+    </SiteShell>
   );
 }
