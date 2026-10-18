@@ -89,6 +89,18 @@ export interface HTTPValidationError {
 }
 
 /**
+ * 検索履歴でよく使われた言葉（ワードクラウド・ランキング用）
+ */
+export interface KeywordCount {
+  /** 言葉（形容詞などは基本形にそろえてある。例: 甘く → 甘い） */
+  word: string;
+  /** この言葉を含む検索の回数 */
+  count: number;
+  /** 表示の大きさの目安（いちばん多い言葉を 1 とした割合、0〜1） */
+  weight: number;
+}
+
+/**
  * データベースのお酒と一致した名前
  */
 export interface MatchedCocktail {
@@ -235,6 +247,19 @@ export type ListPopularQueriesParams = {
    * 返す件数（最大100）
    * @minimum 1
    * @maximum 100
+   */
+  limit?: number;
+  /**
+   * 直近何日分を数えるか。省略するとすべての期間
+   */
+  days?: number | null;
+};
+
+export type ListPopularKeywordsParams = {
+  /**
+   * 返す言葉の数（最大200）
+   * @minimum 1
+   * @maximum 200
    */
   limit?: number;
   /**
@@ -1006,6 +1031,76 @@ export const listPopularQueries = async (
     status: res.status,
     headers: res.headers,
   } as listPopularQueriesResponse;
+};
+
+export type listPopularKeywordsResponse200 = {
+  data: KeywordCount[];
+  status: 200;
+};
+
+export type listPopularKeywordsResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type listPopularKeywordsResponseSuccess =
+  listPopularKeywordsResponse200 & {
+    headers: Headers;
+  };
+export type listPopularKeywordsResponseError =
+  listPopularKeywordsResponse422 & {
+    headers: Headers;
+  };
+
+export type listPopularKeywordsResponse =
+  | listPopularKeywordsResponseSuccess
+  | listPopularKeywordsResponseError;
+
+export const getListPopularKeywordsUrl = (
+  params?: ListPopularKeywordsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `${API_BASE_URL}/store/keywords?${stringifiedParams}`
+    : `${API_BASE_URL}/store/keywords`;
+};
+
+/**
+ * 検索履歴でよく使われた言葉を、回数の多い順に返す（ワードクラウド・ランキング用）
+ *
+ * おすすめで入力された文を単語に分け、意味のある言葉（名詞・形容詞・副詞・動詞）だけを数える。
+ * 「お酒」「飲む」のように好みの手がかりにならない言葉は除く。
+ * `count` はその言葉を含む検索の回数、`weight` はいちばん多い言葉を 1 とした割合。
+ * @summary List Popular Keywords
+ */
+export const listPopularKeywords = async (
+  params?: ListPopularKeywordsParams,
+  options?: RequestInit,
+): Promise<listPopularKeywordsResponse> => {
+  const res = await fetch(getListPopularKeywordsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listPopularKeywordsResponse["data"] = body
+    ? JSON.parse(body)
+    : {};
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as listPopularKeywordsResponse;
 };
 
 export type healthResponse200 = {

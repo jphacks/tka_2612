@@ -5,6 +5,7 @@ requires-python = ">=3.14"
 dependencies = [
     "fastapi[standard-no-fastapi-cloud-cli]>=0.143.3",
     "google-genai>=2.31.0",
+    "janome>=0.5.0",
 ]
 
 [tool.uv]
