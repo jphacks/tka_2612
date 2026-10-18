@@ -9,7 +9,12 @@ from app import gemini
 from app.schemas import MenuScanItem
 
 # 画像を読めるモデル。https://ai.google.dev/gemini-api/docs/models
-MODEL = "gemini-3.8-flash"
+# 軽くて速い flash-lite を使う（gemini-3.8-flash は無料枠が1日20回しかなく、デモで足りないため）
+MODEL = "gemini-3.5-flash-lite"
+
+# 思考の量。文字を読み取るだけなので、いちばん少ない minimal にして応答を速くする
+# （gemini-3.5-flash-lite で選べるのは minimal・low・medium・high）
+THINKING_LEVEL = "minimal"
 
 PROMPT = (
     "この画像は飲食店のメニューです。"
@@ -59,6 +64,7 @@ def read_menu(image: bytes, mime_type: str) -> list[MenuScanItem]:
             "mime_type": "application/json",
             "schema": _MenuDrinks.model_json_schema(),
         },
+        generation_config={"thinking_level": THINKING_LEVEL},
     )
     # stream を指定していないので、ストリームではなく完了した結果が返る
     if not isinstance(interaction, Interaction) or interaction.output_text is None:

@@ -3,8 +3,10 @@
 import unittest
 from unittest import mock
 
+import httpx
 from fastapi.testclient import TestClient
 from google.genai import errors
+from google.genai._gaos.lib.compat_errors import RateLimitError
 from google.genai.interactions import Interaction
 
 from app import gemini, menu_reader
@@ -62,6 +64,16 @@ class TestMenuScan(unittest.TestCase):
         )
         self.assertEqual(self.scan(), 503)
 
+    def test_interactions_rate_limit(self) -> None:
+        # 写真の読み取りで使う interactions API は、google.genai.errors とは別系統の例外を投げる
+        request = httpx.Request("POST", "https://example.com")
+        self.read.side_effect = RateLimitError(
+            "Rate limit exceeded",
+            response=httpx.Response(429, request=request),
+            body=None,
+        )
+        self.assertEqual(self.scan(), 503)
+
     def test_image_required(self) -> None:
         self.assertEqual(self.client.post("/menu/scan").status_code, 422)
 
@@ -103,6 +115,18 @@ class TestReadMenu(unittest.TestCase):
 
     def test_empty(self) -> None:
         self.assertEqual(self.read('{"drinks": []}'), [])
+
+    def test_thinking_level_minimal(self) -> None:
+        fake = mock.Mock()
+        fake.interactions.create.return_value = mock.Mock(
+            spec=Interaction, output_text='{"drinks": []}'
+        )
+        with mock.patch.object(gemini, "client", return_value=fake):
+            menu_reader.read_menu(b"png", "image/png")
+        self.assertEqual(
+            fake.interactions.create.call_args.kwargs["generation_config"],
+            {"thinking_level": "minimal"},
+        )
 
 
 class TestCors(unittest.TestCase):
