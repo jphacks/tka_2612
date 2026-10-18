@@ -16,23 +16,23 @@ export const BASE_NAMES: Record<string, string> = {
 };
 
 // 点の色分けと凡例。13種類だと見分けにくいので、件数の少ないものはまとめる。
-// 明るい紙色の背景（app.css の --paper）の上で見分けやすい色にする
+// 夜の背景（app.css の --night）の上で光って見える色にする
 export const BASE_GROUPS = [
-  { name: "ジン", color: "#3f7cc4", ids: ["gin"] },
-  { name: "ラム", color: "#d99a26", ids: ["rum"] },
-  { name: "ウォッカ", color: "#7b8796", ids: ["vodka"] },
-  { name: "テキーラ", color: "#5f9a3c", ids: ["tequila"] },
-  { name: "ウイスキー", color: "#8a5a36", ids: ["whisky"] },
-  { name: "ブランデー", color: "#c94f86", ids: ["brandy"] },
-  { name: "焼酎・日本酒", color: "#5b62c4", ids: ["shochu", "sake"] },
-  { name: "ワイン・ビール", color: "#cf4a3f", ids: ["wine", "beer"] },
+  { name: "ジン", color: "#7cd3ff", ids: ["gin"] },
+  { name: "ラム", color: "#ffc35c", ids: ["rum"] },
+  { name: "ウォッカ", color: "#c9d6ff", ids: ["vodka"] },
+  { name: "テキーラ", color: "#a8ff7a", ids: ["tequila"] },
+  { name: "ウイスキー", color: "#ff9b5c", ids: ["whisky"] },
+  { name: "ブランデー", color: "#ff7eb6", ids: ["brandy"] },
+  { name: "焼酎・日本酒", color: "#9d8cff", ids: ["shochu", "sake"] },
+  { name: "ワイン・ビール", color: "#ff5f7e", ids: ["wine", "beer"] },
   {
     name: "その他の蒸留酒",
-    color: "#a39587",
+    color: "#b9b3c9",
     ids: ["aquavit", "other-spirits"],
   },
-  { name: "リキュール", color: "#8c5cc2", ids: ["liqueur"] },
-  { name: "ノンアルコール", color: "#c7bbb0", ids: [] },
+  { name: "リキュール", color: "#e07bff", ids: ["liqueur"] },
+  { name: "ノンアルコール", color: "#7d7891", ids: [] },
 ] as const;
 
 export type BaseGroupName = (typeof BASE_GROUPS)[number]["name"];

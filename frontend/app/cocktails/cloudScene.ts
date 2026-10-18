@@ -32,13 +32,15 @@ const FIT_HEIGHT = 0.7;
 // 下部の UI に隠れずに見える範囲（画面の高さに対する割合）
 const VISIBLE_BOTTOM = 0.6;
 const PORTRAIT_VISIBLE_BOTTOM = 0.45;
-// 色は app.css の SIP の配色（--ink・--rust・--paper）に合わせる。
-// 検索で最も一致した点は、ベース酒の色と紛れないよう文字色（濃い茶）で塗る
-const BEST_MATCH_COLOR = "#332a27";
-const SELECTED_RING_COLOR = "#a94f36";
-const LABEL_COLOR = "#332a27";
+// 色は app.css の夜の配色（--ink・--neon・--night）に合わせる。
+// 検索で最も一致した点は、ベース酒の色と紛れないよう白く光らせる
+const BEST_MATCH_COLOR = "#ffffff";
+const SELECTED_RING_COLOR = "#ff4f8b";
+const LABEL_COLOR = "#f6eee8";
 // 名前が点や線に重なっても読めるよう、背景色で縁取る
-const LABEL_HALO_COLOR = "#fffdfa";
+const LABEL_HALO_COLOR = "#120f22";
+// 関連度がこれ以上の点と、選んだ点・最も一致した点は、ネオンのように光らせる
+const GLOW_RELEVANCE = 0.6;
 const LABEL_FONT =
   '12px Inter, "Noto Sans JP", ui-sans-serif, system-ui, sans-serif';
 const PINNED_LABEL_FONT = `600 ${LABEL_FONT}`;
@@ -159,18 +161,27 @@ export function createCloudScene(
     const radius = pointRadius(i);
     if (!isOnScreen(sx, sy, radius + 4)) return;
     const isSelected = cocktails[i].id === selectedId;
+    const isBest = cocktails[i].id === bestId;
+    const color = isBest ? BEST_MATCH_COLOR : colors[i];
     ctx.globalAlpha = (isSelected ? 1 : POINT_ALPHA) * fade;
-    ctx.fillStyle = cocktails[i].id === bestId ? BEST_MATCH_COLOR : colors[i];
+    ctx.fillStyle = color;
+    // ぼかしの影は描くのが重いので、目立たせたい点だけに付ける
+    const glows = isSelected || isBest || relevance[i] >= GLOW_RELEVANCE;
+    ctx.shadowColor = glows ? color : "transparent";
+    ctx.shadowBlur = glows ? radius * 3 : 0;
     ctx.beginPath();
     ctx.arc(sx, sy, radius, 0, Math.PI * 2);
     ctx.fill();
     if (isSelected) {
       ctx.strokeStyle = SELECTED_RING_COLOR;
+      ctx.shadowColor = SELECTED_RING_COLOR;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(sx, sy, radius + 3, 0, Math.PI * 2);
+      ctx.arc(sx, sy, radius + 4, 0, Math.PI * 2);
       ctx.stroke();
     }
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
   };
 
   const overlaps = (a: Rect, b: Rect) =>

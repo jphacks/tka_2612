@@ -1,12 +1,13 @@
-import { type Cocktail, recommend } from "~/api/generated";
+import { type Cocktail, getCocktail, recommend } from "~/api/generated";
 import { locateOnMenu } from "./ocr";
 import type { RecommendationSession } from "./recommendation-session";
 
-const RESULTS_KEY = "sip.recommendation-results";
+const RESULTS_KEY = "cocktail-tasukeru.recommendation-results";
 
 export type RecommendationEntry = {
   cocktail: Cocktail;
-  score: number;
+  // 入力文との相性。気分の入力がなく、相性を計算していないときは null
+  score: number | null;
   // メニューの写真で、このお酒が書かれていた名前（写真なし・メニュー外なら null）
   menuText: string | null;
   // メニューの写真上の位置（写真の幅・高さに対する %）。求めていない・見つからないなら null
@@ -23,6 +24,9 @@ export type RecommendationResults = {
   // メニュー上の位置を求め終えたか（求める必要がないときも true）
   positionsLocated: boolean;
 };
+
+// 一度に位置を求められるお酒の数（POST /menu/locate の上限）
+const LOCATE_LIMIT = 10;
 
 const RECOMMEND_ERRORS: Record<number, string> = {
   503: "おすすめの計算が混み合っています。少し待ってからもう一度お試しください。",
@@ -43,6 +47,34 @@ async function fetchRecommendations(
     : menuTextById.size > 0
       ? "menu"
       : "fallback";
+
+  // 気分の入力がないときは、相性を計算できないので、メニューに載っていた順に並べる。
+  // （おすすめ API は入力文を店舗向けの集計に記録するので、代わりの文を入れて呼ばない）
+  if (session.query === "") {
+    const matched = session.menuMatch?.matched ?? [];
+    const responses = await Promise.all(
+      matched.map(({ cocktailId }) => getCocktail(cocktailId)),
+    );
+    return {
+      sessionId: session.id,
+      recommendations: responses.flatMap((response, i) =>
+        response.status === 200
+          ? [
+              {
+                cocktail: response.data,
+                score: null,
+                menuText: matched[i].text,
+                x: null,
+                y: null,
+              },
+            ]
+          : [],
+      ),
+      unregistered: session.menuMatch?.unregistered ?? [],
+      source,
+      positionsLocated: source !== "menu",
+    };
+  }
 
   const response = await recommend({
     query: session.query,
@@ -133,9 +165,10 @@ export function locateRecommendations(
   const inFlight = locating.get(session.id);
   if (inFlight) return inFlight;
 
-  const texts = results.recommendations.flatMap(({ menuText }) =>
-    menuText ? [menuText] : [],
-  );
+  // 位置を求める API は一度に10件までなので、上から10件だけ求める
+  const texts = results.recommendations
+    .flatMap(({ menuText }) => (menuText ? [menuText] : []))
+    .slice(0, LOCATE_LIMIT);
   // 写真は、検索時に保存した縮小版（data URL）をそのまま送る
   const promise = locateOnMenu(session.menuImage, texts)
     .then((positions) => {

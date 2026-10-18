@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { SiteFooter, SiteHeader } from "~/components/site-chrome";
-import { baseTags, cardColor, englishName } from "~/lib/cocktail-display";
+import { NeonGlass } from "~/components/neon-glass";
+import { SiteHeader } from "~/components/site-chrome";
+import { drinkColor, englishName } from "~/lib/cocktail-display";
 import {
   loadRecommendationSession,
   type RecommendationSession,
@@ -15,7 +16,7 @@ import type { Route } from "./+types/cocktails";
 
 export function meta(_: Route.MetaArgs) {
   return [
-    { title: "おすすめのお酒 — SIP" },
+    { title: "おすすめ — カクテルタスケル" },
     {
       name: "description",
       content: "今の気分に合うお酒をランキングで紹介します。",
@@ -62,135 +63,97 @@ export default function Cocktails() {
       .finally(() => setIsLoaded(true));
   }, []);
 
+  // どこから選んだかを、短く添える
+  const sourceLabel =
+    result?.source === "menu"
+      ? "メニューから"
+      : result?.source === "fallback"
+        ? "メニューのお酒が見つからず、全体から"
+        : "全体から";
+
   return (
     <main className="site-shell">
       <SiteHeader>
         <Link className="topbar-link" to="/">
-          ホームへ戻る <span aria-hidden="true">↗</span>
+          ← ホーム
         </Link>
       </SiteHeader>
 
-      <section
-        className="results-section list-page"
-        aria-labelledby="results-title"
-      >
-        <p className="eyebrow section-eyebrow">MADE FOR YOUR MOOD</p>
-        <div className="results-heading">
-          <div>
-            <h1 id="results-title">今夜のおすすめ</h1>
-            {session && (
-              <p className="results-description">
-                「{session.query}」に合うお酒を、相性の高い順にご紹介します。
-              </p>
-            )}
-          </div>
-          <span className="step-label">
-            <span>02</span> / 03
-          </span>
-        </div>
-
-        {!isLoaded && <p className="page-message">おすすめを準備しています…</p>}
+      <section className="page" aria-labelledby="results-title">
+        {!isLoaded && <p className="page-message">…</p>}
         {loadError && (
-          <div className="page-message page-error" role="alert">
+          <div className="page-message" role="alert">
             <p>{loadError}</p>
             <Link className="text-link" to="/">
-              ホームに戻る
+              ホームへ
             </Link>
           </div>
         )}
         {isLoaded && !loadError && !session && (
           <div className="page-message">
-            <p>検索条件がありません。気分を入力しておすすめを探しましょう。</p>
+            <p>まだ何も探していません</p>
             <Link className="text-link" to="/">
-              ホームで探す <span aria-hidden="true">→</span>
+              ホームで探す →
             </Link>
           </div>
         )}
         {session && result && (
           <>
-            <div className="catalog-note">
-              <span className="catalog-note-icon" aria-hidden="true">
-                ✳
-              </span>
-              <p>
-                {session.menuImage
-                  ? result.source === "menu"
-                    ? "写真から認識したメニュー掲載酒を、気分に合う順に表示しています。"
-                    : "メニュー内のお酒を特定できなかったため、全カタログから表示しています。"
-                  : "メニュー画像がないため、全カタログからおすすめを表示しています。"}
-                <span>
-                  {session.menuImage
-                    ? session.ocrError
-                      ? `OCRに失敗しました: ${session.ocrError}`
-                      : "画像のメニューを AI（Gemini）で読み取りました。"
-                    : "写真を追加すると、画像内のメニューを読み取って候補を絞り込みます。"}
-                </span>
-              </p>
-            </div>
-            {session.menuImage && (
-              <figure className="list-menu-preview">
+            <h1 className="page-title" id="results-title">
+              {session.query ? `「${session.query}」` : "メニューのお酒"}
+            </h1>
+            <p className="page-sub">
+              {session.menuImage && (
                 <img
+                  className="menu-thumb"
                   src={session.menuImage}
-                  alt={`アップロードしたメニュー: ${session.menuImageName ?? "メニュー写真"}`}
+                  alt="読み取ったメニューの写真"
                 />
-                <figcaption>
-                  {session.menuImageName ?? "メニュー写真"}
-                </figcaption>
-              </figure>
+              )}
+              {sourceLabel}・{result.recommendations.length}杯
+            </p>
+            {session.ocrError && (
+              <p className="page-error">{session.ocrError}</p>
             )}
-            <div className="cocktail-list">
-              {result.recommendations.map(({ cocktail, score }, index) => (
-                <Link
-                  className="cocktail-card cocktail-card-link"
-                  key={cocktail.id}
-                  to={`/cocktails/${cocktail.id}`}
-                >
-                  <div
-                    className={`cocktail-art cocktail-art-${cardColor(cocktail)}`}
-                    aria-hidden="true"
-                  >
-                    <span className="cocktail-number">0{index + 1}</span>
-                    <span className="mini-glass">
-                      <span className="mini-drink" />
-                    </span>
-                  </div>
-                  <div className="cocktail-info">
-                    <p className="cocktail-english">{englishName(cocktail)}</p>
-                    <h2>{cocktail.name}</h2>
-                    <p className="cocktail-description">
-                      {cocktail.description}
-                    </p>
-                    <div className="cocktail-tags">
-                      {baseTags(cocktail).map((tag) => (
-                        <span key={tag}>{tag}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="match-score">
-                    <strong>
-                      {Math.round(score * 100)}
-                      <small>%</small>
-                    </strong>
-                    <span>相性</span>
-                  </div>
-                  <span className="card-open" aria-hidden="true">
-                    ↗
-                  </span>
+
+            {result.recommendations.length === 0 && (
+              <div className="page-message">
+                <p>メニューからお酒を見つけられませんでした</p>
+                <Link className="text-link" to="/cocktail_points">
+                  地図で探す →
                 </Link>
-              ))}
-            </div>
-            {result.unregistered.length > 0 && (
-              <div className="unregistered">
-                <h2>読み取れたが未登録のお酒</h2>
-                <p>{result.unregistered.join("、")}</p>
-                <span>写真から読み取ったメニューに含まれています。</span>
               </div>
+            )}
+
+            <ol className="drink-list">
+              {result.recommendations.map(({ cocktail, score }) => (
+                <li key={cocktail.id}>
+                  <Link className="drink-card" to={`/cocktails/${cocktail.id}`}>
+                    <NeonGlass color={drinkColor(cocktail)} />
+                    <div className="drink-body">
+                      <h2>{cocktail.name}</h2>
+                      <p className="drink-en">{englishName(cocktail)}</p>
+                      <p className="drink-desc">{cocktail.description}</p>
+                    </div>
+                    {score !== null && (
+                      <p className="score">
+                        {Math.round(score * 100)}
+                        <small>%</small>
+                      </p>
+                    )}
+                  </Link>
+                </li>
+              ))}
+            </ol>
+
+            {result.unregistered.length > 0 && (
+              <p className="page-note">
+                未登録: {result.unregistered.join("、")}
+              </p>
             )}
           </>
         )}
       </section>
-
-      <SiteFooter />
     </main>
   );
 }

@@ -1,6 +1,6 @@
 import type { MenuMatch } from "./ocr";
 
-const SESSION_KEY = "sip.recommendation-session";
+const SESSION_KEY = "cocktail-tasukeru.recommendation-session";
 
 export type RecommendationSession = {
   // 検索ごとの ID。おすすめの結果をこの検索のものとして保存するのに使う

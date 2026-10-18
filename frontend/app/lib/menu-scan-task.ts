@@ -32,12 +32,12 @@ export function discardPreparedMenuScan(): void {
 
 // ホームで始めたメニューの読み取り（OCR）の状態。
 // 読み取り中に点群のページへ移っても続くよう、React の外（モジュール）で持つ。
-// ページを再読み込みすると消える
+// ページを再読み込みすると消える。previewUrl は、読み取っている写真を画面に出すための URL
 export type MenuScanState =
   | { status: "idle" }
-  | { status: "scanning"; query: string }
-  | { status: "done"; query: string }
-  | { status: "failed"; query: string; message: string };
+  | { status: "scanning"; query: string; previewUrl: string }
+  | { status: "done"; query: string; previewUrl: string }
+  | { status: "failed"; query: string; previewUrl: string; message: string };
 
 const IDLE: MenuScanState = { status: "idle" };
 
@@ -47,8 +47,16 @@ let currentScanId = 0;
 const listeners = new Set<() => void>();
 
 function update(next: MenuScanState) {
+  // 使わなくなった写真の URL は解放する
+  if (state.status !== "idle" && state.previewUrl !== getPreviewUrl(next)) {
+    URL.revokeObjectURL(state.previewUrl);
+  }
   state = next;
   for (const listener of listeners) listener();
+}
+
+function getPreviewUrl(value: MenuScanState): string | null {
+  return value.status === "idle" ? null : value.previewUrl;
 }
 
 export function subscribeMenuScan(listener: () => void): () => void {
@@ -68,7 +76,8 @@ export function getServerMenuScanState(): MenuScanState {
 // メニューの写真を読み取って照合し、おすすめの検索情報を保存する。終わるのを待たずに戻る
 export function startMenuScan(query: string, imageFile: File): void {
   const scanId = ++currentScanId;
-  update({ status: "scanning", query });
+  const previewUrl = URL.createObjectURL(imageFile);
+  update({ status: "scanning", query, previewUrl });
   // 写真を選んだ時点で始めておいた読み取りがあれば、その結果を使う
   const outcome =
     prepared?.file === imageFile ? prepared.promise : analyze(imageFile);
@@ -79,12 +88,15 @@ export function startMenuScan(query: string, imageFile: File): void {
     const { menuMatch, error: ocrError } = await outcome;
     try {
       await saveRecommendationSession(query, imageFile, menuMatch, ocrError);
-      if (scanId === currentScanId) update({ status: "done", query });
+      if (scanId === currentScanId) {
+        update({ status: "done", query, previewUrl });
+      }
     } catch {
       if (scanId === currentScanId) {
         update({
           status: "failed",
           query,
+          previewUrl,
           message:
             "検索を開始できませんでした。画像を小さくするか、もう一度お試しください。",
         });

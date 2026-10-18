@@ -5,7 +5,7 @@ import {
   removeFavorite,
 } from "~/api/generated";
 
-const DEVICE_ID_KEY = "sip.device-id";
+const DEVICE_ID_KEY = "cocktail-tasukeru.device-id";
 
 // ブラウザごとのランダムな端末 ID。お気に入りの記録に使い、個人情報は持たない
 export function getDeviceId(): string {
