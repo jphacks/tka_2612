@@ -148,7 +148,7 @@ class SearchResponse(BaseModel):
 
 
 class MenuScanItem(BaseModel):
-    """メニューの写真から読み取ったお酒1件"""
+    """メニューの写真上の、お酒の名前の位置"""
 
     name: str = Field(description="メニューに書かれているお酒の名前")
     x: float | None = Field(
@@ -162,6 +162,39 @@ class MenuScanItem(BaseModel):
 class MenuScanResponse(BaseModel):
     """メニューの写真から読み取った結果"""
 
+    names: list[str] = Field(
+        description="メニューに載っているお酒の名前（載っている順、同じ名前は1件）"
+    )
+
+
+class MenuLocateRequest(BaseModel):
+    """メニューの写真上の位置を求めるリクエスト"""
+
+    image: str = Field(
+        description="メニューの写真の data URL（例: data:image/jpeg;base64,...）"
+    )
+    names: list[str] = Field(
+        min_length=1,
+        max_length=10,
+        description="位置を求めるお酒の名前（メニューに書かれていたとおり。10件まで）",
+    )
+
+
+class MenuLocateResponse(BaseModel):
+    """メニューの写真上の、指定したお酒の位置"""
+
     items: list[MenuScanItem] = Field(
-        description="メニューに載っているお酒（載っている順、同じ名前は1件）"
+        description="指定したお酒の位置（指定した順。見つからなければ x・y が null）"
+    )
+
+
+class KeywordCount(BaseModel):
+    """検索履歴でよく使われた言葉（ワードクラウド・ランキング用）"""
+
+    word: str = Field(
+        description="言葉（形容詞などは基本形にそろえてある。例: 甘く → 甘い）"
+    )
+    count: int = Field(description="この言葉を含む検索の回数")
+    weight: float = Field(
+        description="表示の大きさの目安（いちばん多い言葉を 1 とした割合、0〜1）"
     )
