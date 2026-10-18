@@ -5,6 +5,6 @@ export default [
   route("cocktails", "routes/cocktails.tsx"),
   route("cocktails/:cocktailId", "routes/cocktail-detail.tsx"),
   route("cocktail_points", "routes/cocktail_points.tsx"),
-  // バーの店長向けのトレンドレポート（利用者向けの画面からはリンクしない）
+  // バーの店長向けのトレンドレポート（ホームのヘッダーの「お店の方へ」から開く）
   route("store", "routes/store.tsx"),
 ] satisfies RouteConfig;

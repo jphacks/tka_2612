@@ -123,7 +123,12 @@ export default function Home() {
 
   return (
     <main className="site-shell">
-      <SiteHeader />
+      {/* お客さんの操作の邪魔にならないよう、店長向けのページへの入り口は控えめに置く */}
+      <SiteHeader>
+        <Link className="topbar-link" to="/store">
+          お店の方へ
+        </Link>
+      </SiteHeader>
 
       <section className="home-hero">
         <NeonGlass color="#ff8a5c" className="home-glass" />
