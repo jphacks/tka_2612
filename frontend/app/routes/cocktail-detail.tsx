@@ -31,15 +31,17 @@ export function meta(_: Route.MetaArgs) {
   ];
 }
 
-// 地図（/cocktail_points）の詳細カードから来たときに、Link の state で渡される情報
-type FromMap = {
-  // 戻り先（地図の URL。検索の ?q= を含む）
+// 地図（/cocktail_points）やお気に入り（/favorites）から来たときに、Link の state で渡される情報
+type FromPage = {
+  // 戻り先（地図なら検索の ?q= を含む URL）
   backTo: string;
+  // 戻るリンクに出す名前。省略すると「地図」
+  backLabel: string;
   // 地図で検索した入力文との相性。検索していなければ null
   score: number | null;
 };
 
-function readFromMap(state: unknown): FromMap | null {
+function readFromPage(state: unknown): FromPage | null {
   if (
     typeof state === "object" &&
     state !== null &&
@@ -48,18 +50,22 @@ function readFromMap(state: unknown): FromMap | null {
     "score" in state &&
     (typeof state.score === "number" || state.score === null)
   ) {
-    return { backTo: state.backTo, score: state.score };
+    const backLabel =
+      "backLabel" in state && typeof state.backLabel === "string"
+        ? state.backLabel
+        : "地図";
+    return { backTo: state.backTo, backLabel, score: state.score };
   }
   return null;
 }
 
 export default function CocktailDetail() {
   const { cocktailId = "" } = useParams();
-  const fromMap = readFromMap(useLocation().state);
-  const isFromMap = fromMap !== null;
-  // 「戻る」の行き先。地図から来たら地図へ、それ以外はおすすめ一覧へ
-  const back = fromMap
-    ? { to: fromMap.backTo, label: "地図" }
+  const fromPage = readFromPage(useLocation().state);
+  const isFromPage = fromPage !== null;
+  // 「戻る」の行き先。地図やお気に入りから来たらそこへ、それ以外はおすすめ一覧へ
+  const back = fromPage
+    ? { to: fromPage.backTo, label: fromPage.backLabel }
     : { to: "/cocktails", label: "おすすめ一覧" };
   const [cocktail, setCocktail] = useState<Cocktail | null>(null);
   const [loadState, setLoadState] = useState<
@@ -76,8 +82,8 @@ export default function CocktailDetail() {
 
   useEffect(() => {
     // 一覧で計算したおすすめの結果（相性とメニュー上の位置）を使う。
-    // 地図から来たときは、前の写真の検索の結果を出さないよう読まない
-    if (!isFromMap) {
+    // 地図やお気に入りから来たときは、前の写真の検索の結果を出さないよう読まない
+    if (!isFromPage) {
       try {
         const currentSession = loadRecommendationSession();
         setSession(currentSession);
@@ -119,7 +125,7 @@ export default function CocktailDetail() {
       .catch(() => {
         setFavoriteError("お気に入りを読み込めませんでした。");
       });
-  }, [cocktailId, isFromMap]);
+  }, [cocktailId, isFromPage]);
 
   const backLink = (
     <Link className="topbar-link" to={back.to}>
@@ -159,7 +165,7 @@ export default function CocktailDetail() {
     entry?.x != null && entry.y != null ? { x: entry.x, y: entry.y } : null;
   const selectedCocktailId = cocktail.id;
   // おすすめ一覧の結果があればその相性、地図から来たら地図で検索したときの相性
-  const score = entry?.score ?? fromMap?.score ?? null;
+  const score = entry?.score ?? fromPage?.score ?? null;
 
   async function toggleFavorite() {
     setIsSaving(true);

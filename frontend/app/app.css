@@ -102,6 +102,18 @@ label {
   color: var(--ink);
 }
 
+/* ヘッダーの右側に、リンクを複数並べるとき */
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.topbar-heart {
+  margin-right: 4px;
+  color: var(--neon);
+}
+
 /* 共通の部品 */
 .text-link {
   color: var(--sunset);
@@ -649,6 +661,13 @@ label {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
+}
+
+/* お気に入りの一覧で、相性の代わりに右側に出す印 */
+.fav-mark {
+  color: var(--neon);
+  font-size: 20px;
+  text-shadow: 0 0 10px rgb(255 79 139 / 60%);
 }
 
 /* お酒の詳細 */
@@ -1552,6 +1571,20 @@ body:has(.biz) {
 @media (max-width: 760px) {
   .topbar {
     height: 60px;
+  }
+
+  /* ヘッダーに収まるよう、お気に入りはハートだけにする */
+  .topbar-nav {
+    gap: 16px;
+  }
+
+  .topbar-link-text {
+    display: none;
+  }
+
+  .topbar-heart {
+    margin-right: 0;
+    font-size: 22px;
   }
 
   /* iPhone は文字が 16px 未満の入力欄を選ぶと画面を拡大するため、16px 以上にする */
