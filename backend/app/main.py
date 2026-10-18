@@ -1,9 +1,11 @@
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
+from app import gemini
 from app.routers import cocktails, favorites, menu, recommendations, store
 
 
@@ -22,6 +24,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(gemini.GeminiUnavailableError)
+async def gemini_unavailable(
+    _: Request, exc: gemini.GeminiUnavailableError
+) -> JSONResponse:
+    """Gemini を呼べないときは、どのエンドポイントでも 503 を返す"""
+    return JSONResponse(status_code=503, content={"detail": exc.detail})
+
 
 app.include_router(cocktails.router)
 app.include_router(menu.router)

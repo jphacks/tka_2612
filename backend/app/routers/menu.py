@@ -1,6 +1,5 @@
 import base64
 import binascii
-import logging
 import re
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
@@ -16,7 +15,6 @@ from app.schemas import (
 )
 
 router = APIRouter(prefix="/menu", tags=["menu"])
-logger = logging.getLogger(__name__)
 
 # Gemini に画像をそのまま送れるのは、リクエスト全体で 20MB まで
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
@@ -33,8 +31,7 @@ def _check_image(data: bytes, mime_type: str) -> None:
         raise HTTPException(status_code=415, detail="画像ファイルを送ってください")
     if len(data) > MAX_IMAGE_BYTES:
         raise HTTPException(status_code=413, detail="画像は 10MB までにしてください")
-    if not gemini.is_available():
-        raise HTTPException(status_code=503, detail="写真の読み取りは現在使えません")
+    gemini.require_available("写真の読み取りは現在使えません")
 
 
 def _decode_data_url(data_url: str) -> tuple[bytes, str]:
@@ -48,21 +45,17 @@ def _decode_data_url(data_url: str) -> tuple[bytes, str]:
         raise HTTPException(status_code=415, detail="画像を読み取れませんでした") from e
 
 
-def _busy(e: Exception) -> HTTPException:
-    logger.warning("メニューの読み取りに失敗しました: %s", e)
-    return HTTPException(
-        status_code=503,
-        detail="ただいま混み合っています。少し待ってからもう一度お試しください",
-    )
+# 写真を受け取るエンドポイントで共通の、エラーの応答の説明
+IMAGE_RESPONSES: dict[int | str, dict[str, object]] = {
+    413: {"description": "画像が大きすぎる（10MB まで）"},
+    415: {"description": "画像ではないファイル"},
+    **gemini.UNAVAILABLE_RESPONSE,
+}
 
 
 @router.post(
     "/scan",
-    responses={
-        413: {"description": "画像が大きすぎる（10MB まで）"},
-        415: {"description": "画像ではないファイル"},
-        503: {"description": "Gemini が使えない（API キー未設定・回数制限など）"},
-    },
+    responses=IMAGE_RESPONSES,
 )
 def scan_menu(
     image: UploadFile = MENU_IMAGE,
@@ -75,20 +68,14 @@ def scan_menu(
     data = image.file.read(MAX_IMAGE_BYTES + 1)
     mime_type = image.content_type or ""
     _check_image(data, mime_type)
-    try:
+    with gemini.report_failure("メニューの読み取り"):
         names = menu_reader.read_names(data, mime_type)
-    except gemini.GeminiError as e:
-        raise _busy(e) from e
     return MenuScanResponse(names=names)
 
 
 @router.post(
     "/locate",
-    responses={
-        413: {"description": "画像が大きすぎる（10MB まで）"},
-        415: {"description": "画像ではないファイル"},
-        503: {"description": "Gemini が使えない（API キー未設定・回数制限など）"},
-    },
+    responses=IMAGE_RESPONSES,
 )
 def locate_menu_items(req: MenuLocateRequest) -> MenuLocateResponse:
     """メニューの写真の中で、指定したお酒の名前が書かれている位置を AI（Gemini）で求める
@@ -99,10 +86,8 @@ def locate_menu_items(req: MenuLocateRequest) -> MenuLocateResponse:
     """
     data, mime_type = _decode_data_url(req.image)
     _check_image(data, mime_type)
-    try:
+    with gemini.report_failure("メニュー上の位置の読み取り"):
         items = menu_reader.locate(data, mime_type, req.names)
-    except gemini.GeminiError as e:
-        raise _busy(e) from e
     return MenuLocateResponse(items=items)
 
 
