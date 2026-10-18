@@ -14,7 +14,9 @@ def generate_unique_id(route: APIRoute) -> str:
     return route.name
 
 
-app = FastAPI(title="tka_2612 API", generate_unique_id_function=generate_unique_id)
+app = FastAPI(
+    title="カクテルタスケル API", generate_unique_id_function=generate_unique_id
+)
 
 # ブラウザのフロントエンド（別オリジン）から API を呼べるようにする。
 # 許可するオリジンは環境変数 CORS_ORIGINS にカンマ区切りで書く（既定はフロントエンドの開発サーバー）
