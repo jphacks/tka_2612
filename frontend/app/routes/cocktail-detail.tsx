@@ -1,15 +1,21 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
+import { type Cocktail, getCocktail } from "~/api/generated";
+import { SiteFooter, SiteHeader } from "~/components/site-chrome";
+import { baseTags, cardColor, englishName } from "~/lib/cocktail-display";
 import {
-  cocktails,
-  findRecognizedMenuItem,
-  rankCocktails,
-} from "~/data/cocktails";
-import { loadFavorites, saveFavorites } from "~/lib/favorites";
+  loadFavoriteCount,
+  loadFavoriteIds,
+  setFavorite,
+} from "~/lib/favorites";
 import {
   loadRecommendationSession,
   type RecommendationSession,
 } from "~/lib/recommendation-session";
+import {
+  loadRecommendationResults,
+  type RecommendationEntry,
+} from "~/lib/recommendations";
 import type { Route } from "./+types/cocktail-detail";
 
 export function meta(_: Route.MetaArgs) {
@@ -23,50 +29,84 @@ export function meta(_: Route.MetaArgs) {
 }
 
 export default function CocktailDetail() {
-  const { cocktailId } = useParams();
-  const cocktail = cocktails.find((item) => item.id === cocktailId);
+  const { cocktailId = "" } = useParams();
+  const [cocktail, setCocktail] = useState<Cocktail | null>(null);
+  const [loadState, setLoadState] = useState<
+    "loading" | "ready" | "not-found" | "error"
+  >("loading");
   const [session, setSession] = useState<RecommendationSession | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [entry, setEntry] = useState<RecommendationEntry | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteCount, setFavoriteCount] = useState<number | null>(null);
+  const [isFavoriteReady, setIsFavoriteReady] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [favoriteError, setFavoriteError] = useState("");
   const [sessionError, setSessionError] = useState("");
 
   useEffect(() => {
+    // 一覧で計算したおすすめの結果（相性とメニュー上の位置）を使う
     try {
-      setSession(loadRecommendationSession());
+      const currentSession = loadRecommendationSession();
+      setSession(currentSession);
+      const found = currentSession
+        ? loadRecommendationResults(currentSession.id)?.recommendations.find(
+            (item) => item.cocktail.id === cocktailId,
+          )
+        : undefined;
+      setEntry(found ?? null);
     } catch {
       setSessionError("検索情報を読み取れませんでした。");
     }
 
-    try {
-      setFavorites(loadFavorites());
-    } catch {
-      setFavoriteError(
-        "お気に入りを読み込めませんでした。ブラウザーの保存データを確認してください。",
-      );
-    } finally {
-      setIsLoaded(true);
-    }
-  }, []);
+    getCocktail(cocktailId)
+      .then((response) => {
+        if (response.status === 200) {
+          setCocktail(response.data);
+          setLoadState("ready");
+        } else {
+          setLoadState(response.status === 404 ? "not-found" : "error");
+        }
+      })
+      .catch(() => setLoadState("error"));
 
-  if (!cocktail) {
+    Promise.all([loadFavoriteIds(), loadFavoriteCount(cocktailId)])
+      .then(([ids, count]) => {
+        setIsFavorite(ids.includes(cocktailId));
+        setFavoriteCount(count);
+        setIsFavoriteReady(true);
+      })
+      .catch(() => {
+        setFavoriteError("お気に入りを読み込めませんでした。");
+      });
+  }, [cocktailId]);
+
+  if (loadState === "loading") {
     return (
       <main className="site-shell detail-shell">
-        <header className="topbar">
-          <Link className="brand" to="/" aria-label="SIP ホーム">
-            <span className="brand-mark" aria-hidden="true">
-              S
-            </span>
-            <span>
-              SIP<span className="brand-period">.</span>
-            </span>
-          </Link>
+        <SiteHeader showNote={false}>
           <Link className="topbar-link" to="/cocktails">
             一覧に戻る <span aria-hidden="true">↗</span>
           </Link>
-        </header>
+        </SiteHeader>
+        <p className="detail-page page-message">読み込んでいます…</p>
+      </main>
+    );
+  }
+
+  if (loadState !== "ready" || !cocktail) {
+    return (
+      <main className="site-shell detail-shell">
+        <SiteHeader showNote={false}>
+          <Link className="topbar-link" to="/cocktails">
+            一覧に戻る <span aria-hidden="true">↗</span>
+          </Link>
+        </SiteHeader>
         <section className="detail-page page-message" role="alert">
-          <h1>お酒が見つかりませんでした</h1>
+          <h1>
+            {loadState === "not-found"
+              ? "お酒が見つかりませんでした"
+              : "お酒の情報を読み込めませんでした"}
+          </h1>
           <Link className="text-link" to="/cocktails">
             おすすめ一覧に戻る
           </Link>
@@ -75,48 +115,40 @@ export default function CocktailDetail() {
     );
   }
 
-  const recommendation = rankCocktails(session?.query ?? "").find(
-    (item) => item.cocktail.id === cocktail.id,
-  );
-  const selectedMenuItem = findRecognizedMenuItem(
-    cocktail,
-    session?.recognizedMenuItems ?? null,
-  );
+  // メニュー写真上の位置（このお酒が書かれていた行を読み取れたときだけ印を付ける）
+  const menuItem = entry?.menuText
+    ? session?.recognizedMenuItems?.find(({ text }) => text === entry.menuText)
+    : undefined;
+  const markerPosition =
+    menuItem?.x != null && menuItem.y != null
+      ? { x: menuItem.x, y: menuItem.y }
+      : null;
   const selectedCocktailId = cocktail.id;
-  const isFavorite = favorites.includes(selectedCocktailId);
 
-  function toggleFavorite() {
-    const updatedFavorites = isFavorite
-      ? favorites.filter((id) => id !== selectedCocktailId)
-      : [...favorites, selectedCocktailId];
-
+  async function toggleFavorite() {
+    setIsSaving(true);
     try {
-      saveFavorites(updatedFavorites);
-      setFavorites(updatedFavorites);
+      const { favorited, count } = await setFavorite(
+        selectedCocktailId,
+        !isFavorite,
+      );
+      setIsFavorite(favorited);
+      setFavoriteCount(count);
       setFavoriteError("");
     } catch {
-      setFavoriteError(
-        "お気に入りを保存できませんでした。ブラウザーの保存領域をご確認ください。",
-      );
+      setFavoriteError("お気に入りを保存できませんでした。");
+    } finally {
+      setIsSaving(false);
     }
   }
 
   return (
     <main className="site-shell detail-shell">
-      <header className="topbar">
-        <Link className="brand" to="/" aria-label="SIP ホーム">
-          <span className="brand-mark" aria-hidden="true">
-            S
-          </span>
-          <span>
-            SIP<span className="brand-period">.</span>
-          </span>
-        </Link>
-        <span className="topbar-note">あなたに合う一杯を見つけよう</span>
+      <SiteHeader>
         <Link className="topbar-link" to="/cocktails">
           一覧に戻る <span aria-hidden="true">↗</span>
         </Link>
-      </header>
+      </SiteHeader>
 
       <article className="detail-page">
         <div className="detail-breadcrumb">
@@ -139,35 +171,29 @@ export default function CocktailDetail() {
                 <img
                   src={session.menuImage}
                   alt={
-                    selectedMenuItem?.x !== null &&
-                    selectedMenuItem?.y !== null &&
-                    selectedMenuItem
+                    markerPosition
                       ? `メニュー写真。${cocktail.name}の位置をマークしています。`
                       : "アップロードしたメニュー写真"
                   }
                 />
-                {selectedMenuItem?.x !== null &&
-                  selectedMenuItem?.y !== null &&
-                  selectedMenuItem && (
-                    <span
-                      className="menu-selection-marker"
-                      style={{
-                        left: `${selectedMenuItem.x}%`,
-                        top: `${selectedMenuItem.y}%`,
-                      }}
-                    >
-                      <span className="marker-pulse" aria-hidden="true" />
-                      <span className="marker-label">{cocktail.name}</span>
-                    </span>
-                  )}
+                {markerPosition && (
+                  <span
+                    className="menu-selection-marker"
+                    style={{
+                      left: `${markerPosition.x}%`,
+                      top: `${markerPosition.y}%`,
+                    }}
+                  >
+                    <span className="marker-pulse" aria-hidden="true" />
+                    <span className="marker-label">{cocktail.name}</span>
+                  </span>
+                )}
               </div>
               <figcaption>
                 {session.menuImageName ?? "アップロードしたメニュー写真"}
                 <span>
-                  {selectedMenuItem?.x !== null &&
-                  selectedMenuItem?.y !== null &&
-                  selectedMenuItem
-                    ? " OCRで読み取った掲載位置をマークしています"
+                  {markerPosition
+                    ? " AI で読み取った掲載位置をマークしています"
                     : " この一杯の掲載位置を特定できませんでした"}
                 </span>
               </figcaption>
@@ -175,7 +201,7 @@ export default function CocktailDetail() {
           ) : (
             <div className="detail-menu-empty">
               <div
-                className={`cocktail-art cocktail-art-${cocktail.color}`}
+                className={`cocktail-art cocktail-art-${cardColor(cocktail)}`}
                 aria-hidden="true"
               >
                 <span className="mini-glass">
@@ -198,18 +224,18 @@ export default function CocktailDetail() {
         <section className="detail-copy" aria-labelledby="cocktail-name">
           <div className="detail-copy-heading">
             <div>
-              <p className="cocktail-english">{cocktail.englishName}</p>
+              <p className="cocktail-english">{englishName(cocktail)}</p>
               <h2 id="cocktail-name">{cocktail.name}</h2>
               <div className="cocktail-tags">
-                {cocktail.tags.map((tag) => (
+                {baseTags(cocktail).map((tag) => (
                   <span key={tag}>{tag}</span>
                 ))}
               </div>
             </div>
             <div className="detail-match">
               <strong>
-                {Math.round((recommendation?.score ?? 0) * 100)}
-                <small>%</small>
+                {entry ? Math.round(entry.score * 100) : "—"}
+                {entry && <small>%</small>}
               </strong>
               <span>あなたとの相性</span>
             </div>
@@ -219,7 +245,7 @@ export default function CocktailDetail() {
             <div className="detail-description">
               <p className="eyebrow section-eyebrow">A LITTLE STORY</p>
               <h3>この一杯について</h3>
-              <p>{cocktail.detail}</p>
+              <p>{cocktail.description}</p>
             </div>
             <aside className="detail-ingredients">
               <p className="eyebrow section-eyebrow">WHAT’S INSIDE</p>
@@ -243,14 +269,18 @@ export default function CocktailDetail() {
                     ? "お気に入りに登録しました"
                     : "この一杯をお気に入りに"}
                 </strong>
-                <p>お気に入りはこのブラウザーに保存されます。</p>
+                <p>
+                  {favoriteCount === null
+                    ? "お気に入りの数を読み込んでいます…"
+                    : `${favoriteCount}人がお気に入りに登録しています`}
+                </p>
               </div>
             </div>
             <button
               className={`favorite-button${isFavorite ? " is-favorite" : ""}`}
               type="button"
               aria-pressed={isFavorite}
-              disabled={!isLoaded || Boolean(favoriteError)}
+              disabled={!isFavoriteReady || isSaving}
               onClick={toggleFavorite}
             >
               <span aria-hidden="true">{isFavorite ? "★" : "☆"}</span>
@@ -272,18 +302,7 @@ export default function CocktailDetail() {
         </section>
       </article>
 
-      <footer className="footer">
-        <Link className="brand footer-brand" to="/" aria-label="SIP ホーム">
-          <span className="brand-mark" aria-hidden="true">
-            S
-          </span>
-          <span>
-            SIP<span className="brand-period">.</span>
-          </span>
-        </Link>
-        <span>Find a drink that feels like you.</span>
-        <span className="footer-year">JPHACKS 2026</span>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

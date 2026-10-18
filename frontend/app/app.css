@@ -705,12 +705,6 @@ textarea:focus-visible,
   color: #9d806c;
 }
 
-.ocr-model-note {
-  margin: 4px 0 0;
-  color: #a59a92;
-  font-size: 9px;
-}
-
 .ocr-progress {
   margin: 8px 0 0;
   color: #8d6550;

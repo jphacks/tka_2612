@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { recommendCocktails } from "~/data/cocktails";
+import { SiteFooter, SiteHeader } from "~/components/site-chrome";
+import { baseTags, cardColor, englishName } from "~/lib/cocktail-display";
 import {
   loadRecommendationSession,
   type RecommendationSession,
 } from "~/lib/recommendation-session";
+import {
+  getRecommendationResults,
+  type RecommendationResults,
+} from "~/lib/recommendations";
 import type { Route } from "./+types/cocktails";
 
 export function meta(_: Route.MetaArgs) {
@@ -20,41 +25,45 @@ export function meta(_: Route.MetaArgs) {
 export default function Cocktails() {
   const [session, setSession] = useState<RecommendationSession | null>(null);
   const [loadError, setLoadError] = useState("");
+  const [result, setResult] = useState<RecommendationResults | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
+    let currentSession: RecommendationSession | null;
     try {
-      setSession(loadRecommendationSession());
+      currentSession = loadRecommendationSession();
     } catch {
       setLoadError(
         "検索情報を読み取れませんでした。ホームからもう一度検索してください。",
       );
-    } finally {
       setIsLoaded(true);
+      return;
     }
-  }, []);
+    setSession(currentSession);
+    if (!currentSession) {
+      setIsLoaded(true);
+      return;
+    }
 
-  const result = recommendCocktails(
-    session?.query ?? "",
-    session?.recognizedMenuItems ?? null,
-  );
+    getRecommendationResults(currentSession)
+      .then(setResult)
+      .catch((error: unknown) => {
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : "おすすめを取得できませんでした。",
+        );
+      })
+      .finally(() => setIsLoaded(true));
+  }, []);
 
   return (
     <main className="site-shell">
-      <header className="topbar">
-        <Link className="brand" to="/" aria-label="SIP ホーム">
-          <span className="brand-mark" aria-hidden="true">
-            S
-          </span>
-          <span>
-            SIP<span className="brand-period">.</span>
-          </span>
-        </Link>
-        <span className="topbar-note">あなたに合う一杯を見つけよう</span>
+      <SiteHeader>
         <Link className="topbar-link" to="/">
           ホームへ戻る <span aria-hidden="true">↗</span>
         </Link>
-      </header>
+      </SiteHeader>
 
       <section
         className="results-section list-page"
@@ -92,7 +101,7 @@ export default function Cocktails() {
             </Link>
           </div>
         )}
-        {session && (
+        {session && result && (
           <>
             <div className="catalog-note">
               <span className="catalog-note-icon" aria-hidden="true">
@@ -102,13 +111,13 @@ export default function Cocktails() {
                 {session.menuImage
                   ? result.source === "menu"
                     ? "写真から認識したメニュー掲載酒を、気分に合う順に表示しています。"
-                    : "メニュー内のカクテルを特定できなかったため、全カタログから表示しています。"
+                    : "メニュー内のお酒を特定できなかったため、全カタログから表示しています。"
                   : "メニュー画像がないため、全カタログからおすすめを表示しています。"}
                 <span>
                   {session.menuImage
                     ? session.ocrError
                       ? `OCRに失敗しました: ${session.ocrError}`
-                      : "画像は端末内で日本語・英語のOCR処理を行いました。"
+                      : "画像のメニューを AI（Gemini）で読み取りました。"
                     : "写真を追加すると、画像内のメニューを読み取って候補を絞り込みます。"}
                 </span>
               </p>
@@ -132,7 +141,7 @@ export default function Cocktails() {
                   to={`/cocktails/${cocktail.id}`}
                 >
                   <div
-                    className={`cocktail-art cocktail-art-${cocktail.color}`}
+                    className={`cocktail-art cocktail-art-${cardColor(cocktail)}`}
                     aria-hidden="true"
                   >
                     <span className="cocktail-number">0{index + 1}</span>
@@ -141,13 +150,13 @@ export default function Cocktails() {
                     </span>
                   </div>
                   <div className="cocktail-info">
-                    <p className="cocktail-english">{cocktail.englishName}</p>
+                    <p className="cocktail-english">{englishName(cocktail)}</p>
                     <h2>{cocktail.name}</h2>
                     <p className="cocktail-description">
                       {cocktail.description}
                     </p>
                     <div className="cocktail-tags">
-                      {cocktail.tags.map((tag) => (
+                      {baseTags(cocktail).map((tag) => (
                         <span key={tag}>{tag}</span>
                       ))}
                     </div>
@@ -176,18 +185,7 @@ export default function Cocktails() {
         )}
       </section>
 
-      <footer className="footer">
-        <Link className="brand footer-brand" to="/" aria-label="SIP ホーム">
-          <span className="brand-mark" aria-hidden="true">
-            S
-          </span>
-          <span>
-            SIP<span className="brand-period">.</span>
-          </span>
-        </Link>
-        <span>Find a drink that feels like you.</span>
-        <span className="footer-year">JPHACKS 2026</span>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

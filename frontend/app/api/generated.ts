@@ -6,6 +6,11 @@
  */
 import { API_BASE_URL } from "./config";
 
+export interface BodyScanMenu {
+  /** メニューの写真（JPEG・PNG など） */
+  image: Blob | File;
+}
+
 /**
  * お酒の情報（ベクトルは API では返さない）
  */
@@ -111,6 +116,26 @@ export interface MenuMatchResponse {
   matched: MatchedCocktail[];
   /** データベースにないお酒の名前 */
   unregistered: string[];
+}
+
+/**
+ * メニューの写真から読み取ったお酒1件
+ */
+export interface MenuScanItem {
+  /** メニューに書かれているお酒の名前 */
+  name: string;
+  /** 名前の中心の横位置（写真の幅に対する %、0〜100）。読み取れなかったときは null */
+  x: number | null;
+  /** 名前の中心の縦位置（写真の高さに対する %、0〜100）。読み取れなかったときは null */
+  y: number | null;
+}
+
+/**
+ * メニューの写真から読み取った結果
+ */
+export interface MenuScanResponse {
+  /** メニューに載っているお酒（載っている順、同じ名前は1件） */
+  items: MenuScanItem[];
 }
 
 /**
@@ -435,6 +460,75 @@ export const searchCocktails = async (
     status: res.status,
     headers: res.headers,
   } as searchCocktailsResponse;
+};
+
+export type scanMenuResponse200 = {
+  data: MenuScanResponse;
+  status: 200;
+};
+
+export type scanMenuResponse413 = {
+  data: void;
+  status: 413;
+};
+
+export type scanMenuResponse415 = {
+  data: void;
+  status: 415;
+};
+
+export type scanMenuResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type scanMenuResponse503 = {
+  data: void;
+  status: 503;
+};
+
+export type scanMenuResponseSuccess = scanMenuResponse200 & {
+  headers: Headers;
+};
+export type scanMenuResponseError = (
+  | scanMenuResponse413
+  | scanMenuResponse415
+  | scanMenuResponse422
+  | scanMenuResponse503
+) & {
+  headers: Headers;
+};
+
+export type scanMenuResponse = scanMenuResponseSuccess | scanMenuResponseError;
+
+export const getScanMenuUrl = () => {
+  return `${API_BASE_URL}/menu/scan`;
+};
+
+/**
+ * メニューの写真から、載っているお酒の名前と写真上の位置を AI（Gemini）で読み取る
+ *
+ * `x`・`y` は名前の中心の位置（写真の幅・高さに対する %）。読み取れなかったときは null。
+ * 読み取った名前は、そのまま `/menu/match` に渡すとデータベースのお酒と照合できる。
+ * @summary Scan Menu
+ */
+export const scanMenu = async (
+  bodyScanMenu: BodyScanMenu,
+  options?: RequestInit,
+): Promise<scanMenuResponse> => {
+  const formData = new FormData();
+  formData.append(`image`, bodyScanMenu.image);
+
+  const res = await fetch(getScanMenuUrl(), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: scanMenuResponse["data"] = body ? JSON.parse(body) : {};
+  return { data, status: res.status, headers: res.headers } as scanMenuResponse;
 };
 
 export type matchMenuResponse200 = {

@@ -145,3 +145,23 @@ class SearchResponse(BaseModel):
     results: list[SimilarCocktail] = Field(
         description="ベクトルが近い順（一致度の高い順）のお酒（100件）"
     )
+
+
+class MenuScanItem(BaseModel):
+    """メニューの写真から読み取ったお酒1件"""
+
+    name: str = Field(description="メニューに書かれているお酒の名前")
+    x: float | None = Field(
+        description="名前の中心の横位置（写真の幅に対する %、0〜100）。読み取れなかったときは null"
+    )
+    y: float | None = Field(
+        description="名前の中心の縦位置（写真の高さに対する %、0〜100）。読み取れなかったときは null"
+    )
+
+
+class MenuScanResponse(BaseModel):
+    """メニューの写真から読み取った結果"""
+
+    items: list[MenuScanItem] = Field(
+        description="メニューに載っているお酒（載っている順、同じ名前は1件）"
+    )
