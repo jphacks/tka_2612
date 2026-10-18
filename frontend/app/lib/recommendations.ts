@@ -1,7 +1,7 @@
 import { type Cocktail, matchMenu, recommend } from "~/api/generated";
 import type { RecommendationSession } from "./recommendation-session";
 
-const RESULTS_KEY = "sip.recommendation-results";
+const RESULTS_KEY = "cocktail-tasukeru.recommendation-results";
 
 export type RecommendationEntry = {
   cocktail: Cocktail;
