@@ -3,7 +3,7 @@ import {
   listCocktails,
   listCocktailVectors,
   searchCocktails,
-} from "../api/generated";
+} from "~/api/generated";
 import { type BaseGroupName, baseGroupOf } from "./bases";
 
 // 地図に描くお酒（API のお酒に、色分けのグループとベクトルを付けたもの）
