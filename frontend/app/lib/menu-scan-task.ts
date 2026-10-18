@@ -2,7 +2,10 @@ import { analyzeMenuImage, type MenuMatch } from "./ocr";
 import { saveRecommendationSession } from "./recommendation-session";
 
 // 読み取りと照合の結果。失敗しても例外にせず、エラーを入れて返す
-type AnalyzeOutcome = { menuMatch: MenuMatch | null; error: string | null };
+export type AnalyzeOutcome = {
+  menuMatch: MenuMatch | null;
+  error: string | null;
+};
 
 // 写真を選んだ時点で始めた読み取りと照合（送信時に使い回し、待ち時間を減らす）
 let prepared: { file: File; promise: Promise<AnalyzeOutcome> } | null = null;
@@ -21,8 +24,11 @@ function analyze(file: File): Promise<AnalyzeOutcome> {
 }
 
 // 写真を選んだ時点で、メニューの読み取りと照合を始めておく
-export function prepareMenuScan(file: File): void {
-  prepared = { file, promise: analyze(file) };
+// 結果を返すので、ホームで読み取りの状態を表示できる
+export function prepareMenuScan(file: File): Promise<AnalyzeOutcome> {
+  const promise = analyze(file);
+  prepared = { file, promise };
+  return promise;
 }
 
 // 写真を外したときは、始めておいた読み取りを使わない
@@ -86,9 +92,18 @@ export function startMenuScan(query: string, imageFile: File): void {
   (async () => {
     // 読み取れなくても、おすすめ一覧で全体から探せるよう検索情報は保存する
     const { menuMatch, error: ocrError } = await outcome;
+    // 読み取り中に新しい読み取りを始めた・閉じたときは、古い結果を保存しない
+    // （保存すると、新しい検索の写真と照合結果を古いもので上書きしてしまう）
+    if (scanId !== currentScanId) return;
     try {
-      await saveRecommendationSession(query, imageFile, menuMatch, ocrError);
-      if (scanId === currentScanId) {
+      const saved = await saveRecommendationSession(
+        query,
+        imageFile,
+        menuMatch,
+        ocrError,
+        () => scanId === currentScanId,
+      );
+      if (saved) {
         update({ status: "done", query, previewUrl });
       }
     } catch {

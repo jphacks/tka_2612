@@ -73,12 +73,15 @@ function fileToImageDataUrl(file: File): Promise<string> {
   });
 }
 
+// 検索情報を保存する。isCurrent を渡すと、写真の縮小を待つあいだに新しい検索が始まっていたら
+// 保存しない（古い検索で新しい検索を上書きしないため）。保存したら true を返す
 export async function saveRecommendationSession(
   query: string,
   imageFile: File | null,
   menuMatch: MenuMatch | null,
   ocrError: string | null,
-): Promise<void> {
+  isCurrent: () => boolean = () => true,
+): Promise<boolean> {
   const session: RecommendationSession = {
     id: crypto.randomUUID(),
     query,
@@ -87,8 +90,10 @@ export async function saveRecommendationSession(
     menuMatch,
     ocrError,
   };
+  if (!isCurrent()) return false;
 
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  return true;
 }
 
 export function loadRecommendationSession(): RecommendationSession | null {
