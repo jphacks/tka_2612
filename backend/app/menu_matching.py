@@ -1,19 +1,23 @@
 """メニューのお酒の名前を、データベースのお酒と照合する
 
 名前と別名の表記ゆれ（中黒・長音・全角半角・大文字小文字・価格・括弧の補足）をそろえてから、
-完全一致を探し、なければ difflib のあいまい一致で探す。
+完全一致を探し、なければ1文字違いまでのあいまい一致で探す。
 """
 
-import difflib
 import re
 import unicodedata
 
 from app.cocktail_db import COCKTAILS
 from app.schemas import Cocktail
 
-# あいまい一致とみなす類似度の下限（0〜1）。
-# 0.8 だと「ジントニク → ジン・トニック」は拾い、「生ビール → ドービル」は拾わない
-FUZZY_CUTOFF = 0.8
+# あいまい一致で許す違いは、1文字の追加・削除・置き換えまで。
+# 「ジントニク → ジン・トニック」「マリブコーラ → マリブコーク」のような読み間違い・表記違いは拾い、
+# 「カルピス → カルピスサワー」「ピーチグレープフルーツ → ライチ・グレープフルーツ」のように
+# 言葉が足された・別のお酒の名前は拾わない（共通部分の割合で比べると、これらも一致してしまう）
+MAX_EDITS = 1
+
+# これより短い名前は、1文字違いでも別の言葉になりやすいので、あいまい一致をしない
+MIN_FUZZY_LENGTH = 4
 
 
 def normalize(name: str) -> str:
@@ -46,5 +50,24 @@ def match(name: str) -> Cocktail | None:
         return None
     if key in _INDEX:
         return _INDEX[key]
-    close = difflib.get_close_matches(key, _KEYS, n=1, cutoff=FUZZY_CUTOFF)
-    return _INDEX[close[0]] if close else None
+    if len(key) < MIN_FUZZY_LENGTH:
+        return None
+    candidates = {_INDEX[k].id: _INDEX[k] for k in _KEYS if _within_one_edit(key, k)}
+    # 1文字違いのお酒が複数あるときは、どれか決められないので一致させない
+    return next(iter(candidates.values())) if len(candidates) == 1 else None
+
+
+def _within_one_edit(a: str, b: str) -> bool:
+    """a と b の違いが、1文字の追加・削除・置き換えまでか（同じ文字列は含まない）"""
+    if a == b or abs(len(a) - len(b)) > MAX_EDITS:
+        return False
+    if len(a) > len(b):
+        a, b = b, a
+    # 先頭と末尾の共通部分を除き、残りが1文字以内なら1文字違い
+    i = 0
+    while i < len(a) and a[i] == b[i]:
+        i += 1
+    j = 0
+    while j < len(a) - i and a[-1 - j] == b[-1 - j]:
+        j += 1
+    return len(b) - i - j <= MAX_EDITS and len(a) - i - j <= MAX_EDITS

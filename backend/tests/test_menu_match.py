@@ -44,7 +44,21 @@ class TestMatch(unittest.TestCase):
         self.assert_match("ブラッディーマリー", "bloody-mary")
 
     def test_fuzzy(self) -> None:
+        # 1文字の読み間違い・表記違いは拾う
         self.assert_match("ジントニク", "gin-and-tonic")
+        self.assert_match("マリブコーラ", "malibu-coke")
+
+    def test_fuzzy_does_not_match_other_drinks(self) -> None:
+        # 言葉が足された名前や、一部だけ違う別のお酒の名前は拾わない
+        for name in [
+            "カルピス",  # カルピスサワーではない
+            "オレンジ",  # ビター・オレンジではない
+            "グレープフルーツ",  # グレープフルーツサワーではない
+            "トニック",  # スーズ・トニックではない
+            "ピーチグレープフルーツ",  # ライチ・グレープフルーツではない
+        ]:
+            with self.subTest(name=name):
+                self.assertIsNone(menu_matching.match(name))
 
     def test_not_match_unrelated(self) -> None:
         for name in ["生ビール", "ウーロン茶", "店長おすすめサワー", ""]:
