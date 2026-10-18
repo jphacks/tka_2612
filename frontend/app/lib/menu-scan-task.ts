@@ -1,5 +1,34 @@
-import { type RecognizedMenuItem, recognizeMenuImage } from "./ocr";
+import { analyzeMenuImage, type MenuMatch } from "./ocr";
 import { saveRecommendationSession } from "./recommendation-session";
+
+// 読み取りと照合の結果。失敗しても例外にせず、エラーを入れて返す
+type AnalyzeOutcome = { menuMatch: MenuMatch | null; error: string | null };
+
+// 写真を選んだ時点で始めた読み取りと照合（送信時に使い回し、待ち時間を減らす）
+let prepared: { file: File; promise: Promise<AnalyzeOutcome> } | null = null;
+
+function analyze(file: File): Promise<AnalyzeOutcome> {
+  return analyzeMenuImage(file).then(
+    (menuMatch) => ({ menuMatch, error: null }),
+    (error: unknown) => ({
+      menuMatch: null,
+      error:
+        error instanceof Error
+          ? error.message
+          : "メニュー画像の文字認識に失敗しました。",
+    }),
+  );
+}
+
+// 写真を選んだ時点で、メニューの読み取りと照合を始めておく
+export function prepareMenuScan(file: File): void {
+  prepared = { file, promise: analyze(file) };
+}
+
+// 写真を外したときは、始めておいた読み取りを使わない
+export function discardPreparedMenuScan(): void {
+  prepared = null;
+}
 
 // ホームで始めたメニューの読み取り（OCR）の状態。
 // 読み取り中に点群のページへ移っても続くよう、React の外（モジュール）で持つ。
@@ -44,32 +73,21 @@ export function getServerMenuScanState(): MenuScanState {
   return IDLE;
 }
 
-// メニューの写真を読み取り、おすすめの検索情報を保存する。終わるのを待たずに戻る
+// メニューの写真を読み取って照合し、おすすめの検索情報を保存する。終わるのを待たずに戻る
 export function startMenuScan(query: string, imageFile: File): void {
   const scanId = ++currentScanId;
   const previewUrl = URL.createObjectURL(imageFile);
   update({ status: "scanning", query, previewUrl });
+  // 写真を選んだ時点で始めておいた読み取りがあれば、その結果を使う
+  const outcome =
+    prepared?.file === imageFile ? prepared.promise : analyze(imageFile);
+  prepared = null;
 
   (async () => {
-    let recognizedMenuItems: RecognizedMenuItem[] | null = null;
-    let ocrError: string | null = null;
+    // 読み取れなくても、おすすめ一覧で全体から探せるよう検索情報は保存する
+    const { menuMatch, error: ocrError } = await outcome;
     try {
-      recognizedMenuItems = await recognizeMenuImage(imageFile);
-    } catch (error) {
-      // 読み取れなくても、おすすめ一覧で全体から探せるよう検索情報は保存する
-      ocrError =
-        error instanceof Error
-          ? error.message
-          : "メニュー画像の文字認識に失敗しました。";
-    }
-
-    try {
-      await saveRecommendationSession(
-        query,
-        imageFile,
-        recognizedMenuItems,
-        ocrError,
-      );
+      await saveRecommendationSession(query, imageFile, menuMatch, ocrError);
       if (scanId === currentScanId) {
         update({ status: "done", query, previewUrl });
       }
