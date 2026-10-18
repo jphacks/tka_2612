@@ -125,9 +125,20 @@ export default function Home() {
     <main className="site-shell">
       {/* お客さんの操作の邪魔にならないよう、店長向けのページへの入り口は控えめに置く */}
       <SiteHeader>
-        <Link className="topbar-link" to="/store">
-          お店の方へ
-        </Link>
+        <nav className="topbar-nav">
+          <Link className="topbar-link" to="/favorites" aria-label="お気に入り">
+            <span className="topbar-heart" aria-hidden="true">
+              ♡
+            </span>
+            {/* 狭い画面ではハートだけにして、ヘッダーに収める */}
+            <span className="topbar-link-text" aria-hidden="true">
+              お気に入り
+            </span>
+          </Link>
+          <Link className="topbar-link" to="/store">
+            お店の方へ
+          </Link>
+        </nav>
       </SiteHeader>
 
       <section className="home-hero">
