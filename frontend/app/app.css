@@ -705,13 +705,6 @@ textarea:focus-visible,
   color: #9d806c;
 }
 
-.ocr-progress {
-  margin: 8px 0 0;
-  color: #8d6550;
-  font-size: 11px;
-  text-align: center;
-}
-
 .field-error {
   margin: 7px 0 0;
   color: #a13c2e;
@@ -1048,11 +1041,6 @@ textarea:focus-visible,
   cursor: wait;
   opacity: 0.65;
   transform: none;
-}
-
-.request-error {
-  grid-column: 1 / -1;
-  text-align: center;
 }
 
 .list-page {

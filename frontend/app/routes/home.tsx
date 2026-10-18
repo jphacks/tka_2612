@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { SiteFooter, SiteHeader } from "~/components/site-chrome";
-import { analyzeMenuImage, type MenuMatch } from "~/lib/ocr";
-import { saveRecommendationSession } from "~/lib/recommendation-session";
+import {
+  discardPreparedMenuScan,
+  prepareMenuScan,
+  startMenuScan,
+} from "~/lib/menu-scan-task";
 import type { Route } from "./+types/home";
 
 export function meta(_: Route.MetaArgs) {
@@ -16,11 +19,6 @@ export function meta(_: Route.MetaArgs) {
   ];
 }
 
-type ScanOutcome = {
-  menuMatch: MenuMatch | null;
-  error: string | null;
-};
-
 export default function Home() {
   const navigate = useNavigate();
   const [preference, setPreference] = useState("");
@@ -28,14 +26,6 @@ export default function Home() {
   const [imageError, setImageError] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState("");
-  const [ocrProgress, setOcrProgress] = useState("");
-  // 写真を選んだ時点で始めたメニューの読み取り（送信時に使い回す）
-  const scanRef = useRef<{
-    file: File;
-    promise: Promise<ScanOutcome>;
-  } | null>(null);
 
   useEffect(() => {
     if (!imageFile) {
@@ -49,32 +39,6 @@ export default function Home() {
     return () => URL.revokeObjectURL(objectUrl);
   }, [imageFile]);
 
-  // メニューの読み取りを始める。失敗しても例外にせず、結果にエラーを入れて返す
-  function startScan(file: File): Promise<ScanOutcome> {
-    setOcrProgress("メニューを読み取っています…");
-    // 読み取りと照合をここで済ませ、送信時はおすすめの計算だけにする
-    const promise = analyzeMenuImage(file).then(
-      (menuMatch) => ({ menuMatch, error: null }),
-      (error: unknown) => ({
-        menuMatch: null,
-        error:
-          error instanceof Error
-            ? error.message
-            : "メニュー画像の文字認識に失敗しました。",
-      }),
-    );
-    scanRef.current = { file, promise };
-    promise.then(({ menuMatch, error }) => {
-      // 読み取り中に写真を変えた・消したときは、古い結果を表示しない
-      if (scanRef.current?.file !== file) return;
-      setOcrProgress(
-        error ??
-          `メニューを読み取りました（登録済みのお酒 ${menuMatch?.matched.length ?? 0}件）`,
-      );
-    });
-    return promise;
-  }
-
   function selectImage(file: File | undefined) {
     setImageError("");
     if (!file) return;
@@ -83,14 +47,13 @@ export default function Home() {
       return;
     }
     setImageFile(file);
-    // ボタンを押す前に読み取りを始めて、待ち時間を減らす
-    startScan(file);
+    // ボタンを押す前に読み取りと照合を始めて、待ち時間を減らす
+    prepareMenuScan(file);
   }
 
   function removeImage() {
     setImageFile(null);
-    scanRef.current = null;
-    setOcrProgress("");
+    discardPreparedMenuScan();
   }
 
   // 写真の選択・撮影のどちらでも使う。同じ写真を選び直せるよう、選択をリセットする
@@ -99,36 +62,13 @@ export default function Home() {
     event.currentTarget.value = "";
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // メニューの写真がなければ、全カクテルの中から入力文に近いものを点群で見せる
-    if (!imageFile) {
-      navigate(`/cocktail_points?q=${encodeURIComponent(preference.trim())}`);
-      return;
-    }
-    setIsSubmitting(true);
-    setSubmitError("");
-    try {
-      // 写真を選んだときに始めた読み取りがあれば、その結果を待つ
-      const { menuMatch, error: ocrError } = await (scanRef.current?.file ===
-      imageFile
-        ? scanRef.current.promise
-        : startScan(imageFile));
-
-      await saveRecommendationSession(
-        preference.trim(),
-        imageFile,
-        menuMatch,
-        ocrError,
-      );
-      navigate("/cocktails");
-    } catch {
-      setSubmitError(
-        "検索を開始できませんでした。画像を小さくするか、もう一度お試しください。",
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
+    const query = preference.trim();
+    // メニューの写真があれば読み取りを始め、終わるまで点群のページで待てるようにする。
+    // 読み取りが終わると、点群のページからおすすめ一覧へ進める
+    if (imageFile) startMenuScan(query, imageFile);
+    navigate(`/cocktail_points?q=${encodeURIComponent(query)}`);
   }
 
   return (
@@ -211,7 +151,6 @@ export default function Home() {
               id="preference"
               name="preference"
               value={preference}
-              disabled={isSubmitting}
               onChange={(event) => {
                 setPreference(event.target.value);
               }}
@@ -229,7 +168,6 @@ export default function Home() {
                       setPreference(suggestion);
                     }}
                     type="button"
-                    disabled={isSubmitting}
                   >
                     + {suggestion}
                   </button>
@@ -251,7 +189,6 @@ export default function Home() {
               id="menu-photo"
               type="file"
               accept="image/*"
-              disabled={isSubmitting}
               onChange={handleFileInput}
             />
             <input
@@ -260,7 +197,6 @@ export default function Home() {
               type="file"
               accept="image/*"
               capture="environment"
-              disabled={isSubmitting}
               onChange={handleFileInput}
             />
             {imageUrl ? (
@@ -280,7 +216,6 @@ export default function Home() {
                   onClick={removeImage}
                   type="button"
                   aria-label="選択した写真を削除"
-                  disabled={isSubmitting}
                 >
                   ×
                 </button>
@@ -336,33 +271,19 @@ export default function Home() {
               写真を選ぶと、メニューの読み取りのため Google の
               AI（Gemini）に送信します
             </p>
-            {ocrProgress && (
-              <p className="ocr-progress" aria-live="polite">
-                {ocrProgress}
-              </p>
-            )}
           </div>
 
-          <button
-            className="submit-button"
-            disabled={isSubmitting}
-            type="submit"
-          >
-            <span>
-              {isSubmitting ? "準備しています…" : "おすすめを見つける"}
-            </span>
+          <button className="submit-button" type="submit">
+            <span>おすすめを見つける</span>
             <span className="submit-arrow" aria-hidden="true">
               →
             </span>
           </button>
           <p className="demo-note">
-            写真がなければ、全カクテルの地図から近いものを探せます
+            {imageFile
+              ? "メニューを読み取るあいだ、全カクテルの地図を眺めて待てます"
+              : "写真がなければ、全カクテルの地図から近いものを探せます"}
           </p>
-          {submitError && (
-            <p className="field-error request-error" role="alert">
-              {submitError}
-            </p>
-          )}
         </form>
       </section>
 
